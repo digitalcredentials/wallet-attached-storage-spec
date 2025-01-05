@@ -57,7 +57,17 @@ un-encrypted format.
 * Replication also provides critical availability and disaster recovery 
   functionality
 
+* Replication needs to be multi-primary (to reflect the multi-device and multi-
+  client user environment)
+
+* Multi-primary replication requires support for a versioning or conflict
+  resolution mechanism
+
 * Data, metadata, and permissions all need to be replicated
+
+* Authorship and data provenance (the ability to tell which user or service
+  created or edited a given set of data) must work in this permissioned multi-
+  primary write environment
 
 #### Serve as a General Purpose application storage backend
 
