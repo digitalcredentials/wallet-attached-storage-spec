@@ -7,7 +7,7 @@
 This storage specification is intended to support the following goals and 
 requirements.
 
-#### Local-first and Offline capable
+#### Local-first and Offline capable storage
 
 Users and apps need to be able to use (provision, set up, and start reading and 
 writing to) storage spaces without being connected to the internet.
@@ -37,18 +37,6 @@ primary use cases of this specification.
 * Advanced sharing conditions are also desireable (such as "this share expires
   after X amount of time" or "this is a one-time share, and will expire after
   the first successful read request")
-
-#### A Plurality of Data Formats and Protocols
-
-* Spec needs to support the storage of any kind of data -- binary files and
-  objects, structured documents such as JSON or CBOR, contents of relational 
-  database tables, graphs, and anything else, all using the same unified metadata,
-  sharing and permission mechanisms.
-
-* Storage-side schema enforcement is available but not required.
-
-* Spec needs to be able to support multiple protocols and APIs, such as HTTP,
-  JSON-RPC, DIDComm, local client APIs, and more.
 
 #### Stored data is opaque to the storage provider
 
@@ -101,6 +89,18 @@ Data written to storage spaces using this specification needs to be portable:
   the data from backup, without shares and permissions breaking (agents that
   the data was previously shared with must still be able to find the data at
   the new storage server location, and their permissions must still work) 
+
+#### A Plurality of Data Formats and Protocols
+
+* Spec needs to support the storage of any kind of data -- binary files and
+  objects, structured documents such as JSON or CBOR, contents of relational
+  database tables, graphs, and anything else, all using the same unified metadata,
+  sharing and permission mechanisms.
+
+* Storage-side schema enforcement is available but not required.
+
+* Spec needs to be able to support multiple protocols and APIs, such as HTTP,
+  JSON-RPC, DIDComm, local client APIs, and more.
 
 ### Anti-Goals
 
