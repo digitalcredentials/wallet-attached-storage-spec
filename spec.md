@@ -9,14 +9,14 @@ requirements.
 
 #### Local-first and Offline capable
 
-Users and apps need to be able to provision, set up, and start reading and 
-writing to, storage spaces without being connected to the internet.
+Users and apps need to be able to use (provision, set up, and start reading and 
+writing to) storage spaces without being connected to the internet.
 
 #### Storage and sharing of public, permissioned, and private encrypted data
 
-Although the local-first offline functionality is necessary, writing data to stable
-internet-accessible URIs for the purposes of sharing them is one of the primary
-motivations of this specification.
+Although the local-first offline functionality is necessary, writing data to 
+stable internet-accessible URIs for the purposes of sharing them is one of the 
+primary use cases of this specification.
 
 * A user needs to be able to write data (that is intended to be world-readable) 
   to a cloud-accessible URI, and be able to send that URI to intended recipients
@@ -37,6 +37,18 @@ motivations of this specification.
 * Advanced sharing conditions are also desireable (such as "this share expires
   after X amount of time" or "this is a one-time share, and will expire after
   the first successful read request")
+
+#### A Plurality of Data Formats and Protocols
+
+* Spec needs to support the storage of any kind of data -- binary files and
+  objects, structured documents such as JSON or CBOR, contents of relational 
+  database tables, graphs, and anything else, all using the same unified metadata,
+  sharing and permission mechanisms.
+
+* Storage-side schema enforcement is available but not required.
+
+* Spec needs to be able to support multiple protocols and APIs, such as HTTP,
+  JSON-RPC, DIDComm, local client APIs, and more.
 
 #### Stored data is opaque to the storage provider
 
