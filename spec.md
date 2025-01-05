@@ -112,6 +112,14 @@ Data written to storage spaces using this specification needs to be portable:
 * Spec needs to be able to support multiple protocols and APIs, such as HTTP,
   JSON-RPC, DIDComm, local client APIs, and more.
 
+#### Permissioned Query and Search functionality
+
+* Where appropriate (such as for unstructured text, structured documents, RDBMs
+etc), storage needs to be queryable or searchable
+
+* Any query/search mechanism needs to work well with the sharing/permission and
+  replication requirements
+
 ### Anti-Goals
 
 ### Core Concepts
