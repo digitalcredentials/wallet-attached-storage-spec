@@ -22,7 +22,9 @@ primary use cases of this specification.
   to a cloud-accessible URI, and be able to send that URI to intended recipients
   via any out of band mechanism such as email, chat, and so on.
 
-* User needs to be able to change or revoke permissions at any point after sharing
+* User needs to be able to change or revoke permissions at any point after 
+  sharing. Note that changed permissions apply only to subsequent operations 
+  (this spec is not intended to solve the general problem of DRM).
 
 * The sharing and permission system needs to be primarily based on authorization
   capabilities (zcaps), but it needs to also support storage-side access control 
