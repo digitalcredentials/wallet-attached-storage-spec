@@ -122,6 +122,21 @@ etc), storage needs to be queryable or searchable
 * Any query/search mechanism needs to work well with the sharing/permission and
   replication requirements
 
+### Upgradeable and legislation-compliant cryptography
+
+All cryptography has a half-life.
+
+* Any cryptographic operations (such as hashing, signatures, and encryption)
+  used in this specification must be able to be obsoleted or upgraded, as
+  techniques and algorithms break. To put it another way, the spec cannot
+  "hardcode" any given algorithm (although it can recommend current best 
+  practices)
+
+* Implementations of this spec need to be usable in government and enterprise
+  environments, which means all of the spec requirements must be able to be
+  fulfilled using legislation-approved (for example, FIPS-compliant) in most
+  jurisdictions
+
 ### Anti-Goals
 
 ### Core Concepts
