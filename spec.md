@@ -21,10 +21,10 @@
 
 `Space` properties:
 
-* `id`
-* `type`
-* `name`
-* `controller` (required)
+* `id` - deterministically set by server if not provided.
+* `type` - set by server to the string `Space`
+* `name` (optional)
+* `controller` - determined by server based on who creates the space originally
 
 #### Space JSON Representation
 
@@ -171,6 +171,49 @@ Example error response (missing authorization):
 * Allows to update the following fields:
   - `name`
   - `controller`
+
+#### (HTTP API) PUT `/spaces/{space_id}`
+
+Note that this is a _full_ update (partial updates via http `PATCH` verb might
+be supported later).
+
+Example request (updating the name of a space):
+
+```http
+PUT /spaces/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
+Host: example.com
+Content-type: application/json
+Accept: application/json
+Authorization: ...
+
+{
+  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "name": "Newly renamed space #1",
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+}
+```
+
+Example success response (returns the updated details of the space):
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+Location: https://example.com/spaces/81246131-69a4-45ab-9bff-9c946b59cf2e
+
+{
+  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "type": "Space",
+  "name": "Newly renamed space #1",
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+}
+```
+
+Example error response (missing or invalid authorization):
+
+Example error response (invalid `id` provided, the space does not exist):
+
+Example error response (client is attempting to change an immutable field like
+the space `id`):
 
 ### Delete Space operation
 
