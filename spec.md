@@ -198,7 +198,7 @@ Authorization: ...
 }
 ```
 
-Example success response (returns the updated details of the space):
+Example success response:
 
 ```http
 HTTP/1.1 204 No Content
@@ -217,7 +217,6 @@ the space `id`):
   or a zcap granting permission to write to a particular space)
 * Deletes the space and all of the data (collections and resources) contained
   in it
-* Server responds with a Tombstone object (which will be later used for replication)
 * This operation is idempotent
 
 #### (HTTP API) DELETE `/spaces/{space_id}`
