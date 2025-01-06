@@ -128,8 +128,6 @@ Example error response (missing or insufficient authorization):
 
 Example error response (space id not found):
 
-#### (HTTP API) HEAD `/spaces/{space_id}`
-
 ### List Spaces Operation
 
 * Requires appropriate authorization (root zcap invoked by the controller of one
