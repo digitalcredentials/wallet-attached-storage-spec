@@ -29,8 +29,6 @@
 
 #### Space JSON Representation
 
-#### Space CBOR Representation
-
 ### Create Space operation
 
 To create a Space:
@@ -248,8 +246,6 @@ Example error response (invalid `id` provided):
 ### Collection Data Model
 
 #### Collection JSON Representation (ActivityPub profile)
-
-#### Collection CBOR Representation
 
 ### Collection Operations
 
