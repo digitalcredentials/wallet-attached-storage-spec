@@ -42,13 +42,9 @@ primary use cases of this specification.
 
 #### Stored data is opaque to the storage provider
 
-* Stored data needs to be opaque to the storage provider. That is, unless a user 
-explicitly authorizes it (via the sharing and permission mechanisms), storage 
-providers need to be unable to read the data stored on their servers in an 
-un-encrypted format. 
-
-* For plausible deniability, the spec needs to be able to support situations
-  where all data (even marked as public-readable) is encrypted at rest
+* The spec needs to support (though not require) end-to-end client side 
+  encryption of the space. For plausible deniability, this might need to include 
+  all all data (even marked as public-readable) is encrypted at rest
 
 #### Replication to user-controlled local and cloud servers
 
