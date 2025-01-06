@@ -201,16 +201,7 @@ Authorization: ...
 Example success response (returns the updated details of the space):
 
 ```http
-HTTP/1.1 200 OK
-Content-type: application/json
-Location: https://example.com/spaces/81246131-69a4-45ab-9bff-9c946b59cf2e
-
-{
-  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
-  "type": ["Space"],
-  "name": "Newly renamed space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
-}
+HTTP/1.1 204 No Content
 ```
 
 Example error response (missing or invalid authorization):
@@ -243,12 +234,7 @@ Authorization: ...
 Example success response:
 
 ```http
-HTTP/1.1 200 OK
-Content-type: application/json
-
-{
-  ... TODO: specify Tombstone format
-}
+HTTP/1.1 204 No Content
 ```
 
 TODO: Decide whether subsequent GET requests to the same space should result in
