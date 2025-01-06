@@ -2,17 +2,17 @@
 
 ### Overview
 
-### Goals and Requirements
+## Goals and Requirements
 
 This storage specification is intended to support the following goals and 
 requirements.
 
-#### Local-first and Offline capable storage
+### Local-first and Offline capable storage
 
 Users and apps need to be able to use (provision, set up, and start reading and 
 writing to) storage spaces without being connected to the internet.
 
-#### Storage and sharing of public, permissioned, and private encrypted data
+### Storage and sharing of public, permissioned, and private encrypted data
 
 Although the local-first offline functionality is necessary, writing data to 
 stable internet-accessible URIs for the purposes of sharing them is one of the 
@@ -40,13 +40,13 @@ primary use cases of this specification.
   after X amount of time" or "this is a one-time share, and will expire after
   the first successful read request")
 
-#### Stored data is opaque to the storage provider
+### Stored data is opaque to the storage provider
 
 * The spec needs to support (though not require) end-to-end client side 
   encryption of the space. For plausible deniability, this might need to include 
   all all data (even marked as public-readable) is encrypted at rest
 
-#### Replication to user-controlled local and cloud servers
+### Replication to user-controlled local and cloud servers
 
 * Replication reconciles the first two requirements (data reads and writes must
   be offline-capable, but the data must eventually be able to be shared on the
@@ -67,12 +67,12 @@ primary use cases of this specification.
   created or edited a given set of data) must work in this permissioned multi-
   primary write environment
 
-#### Serve as a General Purpose application storage backend
+### Serve as a General Purpose application storage backend
 
 Intended to serve as storage backend to client-side (Single Page Applications),
 server side, desktop, and mobile apps and services.
 
-#### Data Portability
+### Data Portability
 
 Data written to storage spaces using this specification needs to be portable:
 
@@ -98,7 +98,7 @@ Data written to storage spaces using this specification needs to be portable:
   the data was previously shared with must still be able to find the data at
   the new storage server location, and their permissions must still work) 
 
-#### A Plurality of Data Formats and Protocols
+### A Plurality of Data Formats and Protocols
 
 * Spec needs to support the storage of any kind of data -- binary files and
   objects, structured documents such as JSON or CBOR, contents of relational
@@ -110,7 +110,7 @@ Data written to storage spaces using this specification needs to be portable:
 * Spec needs to be able to support multiple protocols and APIs, such as HTTP,
   JSON-RPC, DIDComm, local client APIs, and more.
 
-#### Permissioned Query and Search functionality
+### Permissioned Query and Search functionality
 
 * Where appropriate (such as for unstructured text, structured documents, RDBMs
 etc), storage needs to be queryable or searchable
@@ -146,8 +146,6 @@ To put it a different way -- all encryption has an unpredictable half life, and
 some use cases do not permit relying on encryption only for access control.
 Instead a _combination_ of encryption and authorization enforcement by minimally
 trusted storage servers is required.
-
-### Core Concepts
 
 ## Terminology
 
