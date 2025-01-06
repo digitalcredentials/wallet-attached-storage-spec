@@ -175,7 +175,8 @@ Example error response (missing authorization):
 #### (HTTP API) PUT `/spaces/{space_id}`
 
 Note that this is a _full_ update (partial updates via http `PATCH` verb might
-be supported later).
+be supported later). However, some fields may not be updated (like `id`) and so
+may be omitted from the request payload.
 
 Example request (updating the name of a space):
 
