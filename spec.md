@@ -22,7 +22,7 @@
 `Space` properties:
 
 * `id` - deterministically set by server if not provided.
-* `type` - set by server to the string `Space`
+* `type` - a sorted array of strings, MUST include the type `Space`.
 * `name` (optional)
 * `controller` - determined by server based on who creates the space originally
 
@@ -71,7 +71,7 @@ Location: https://example.com/spaces/81246131-69a4-45ab-9bff-9c946b59cf2e
 
 {
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
-  "type": "Space",
+  "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
 }
@@ -114,7 +114,7 @@ Content-type: application/json
 
 {
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
-  "type": "Space",
+  "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
 }
@@ -205,7 +205,7 @@ Location: https://example.com/spaces/81246131-69a4-45ab-9bff-9c946b59cf2e
 
 {
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
-  "type": "Space",
+  "type": ["Space"],
   "name": "Newly renamed space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
 }
