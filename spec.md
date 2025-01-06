@@ -21,10 +21,11 @@
 
 `Space` properties:
 
-* `id` - deterministically set by server if not provided.
-* `type` - a sorted array of strings, MUST include the type `Space`.
-* `name` (optional)
-* `controller` - determined by server based on who creates the space originally
+* `id` - Deterministically set by server if not provided.
+* `type` - A sorted array of strings, MUST include the type `Space`.
+* `name` (optional) - An arbitrary human-readable name for the space. Does not
+  have to be unique.
+* `controller` - Determined by server based on who creates the space originally.
 
 #### Space JSON Representation
 
