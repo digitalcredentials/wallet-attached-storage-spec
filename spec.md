@@ -228,8 +228,6 @@ Example error response (invalid `id` provided):
 
 Example error response (a space with the specified `id` already exists):
 
-#### (Javascript API) Space .create()
-
 ### Read Space operation
 
 * Requires appropriate authorization (root zcap invoked by the space's controller,
@@ -390,19 +388,27 @@ Example error response (invalid `id` provided):
 
 #### Collection HTTP API
 
-#### Collection Javascript Client API
-
 ## Resources and Blobs
 
 ### Blob Data Model
+
+A logical unit of data, in transit or at rest.
+(As described in the [W3c FileAPI: Blob Interface](https://w3c.github.io/FileAPI/#blob-section)).
+
+Blob properties:
+
+* byte stream
+* `size` - length of the byte stream in bytes
+  - Note: Although size can be derived from bytes, it's useful to be able to
+    have it up front (for the receiving system to decide to reject an upload
+    based on quota / exceeding max size, etc).
+* `type` (required) (from the IANA mime type registry)
 
 ### Resource Data Model
 
 ### Resource Operations
 
 #### Resource HTTP API
-
-#### Resource Javascript Client API
 
 ## Security and Privacy Considerations
 
