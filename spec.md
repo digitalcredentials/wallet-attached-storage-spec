@@ -107,7 +107,7 @@ Example request:
 GET /spaces/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
 Host: example.com
 Accept: application/json
-Authorization: ...
+Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
 ```
 
 Example success response:
