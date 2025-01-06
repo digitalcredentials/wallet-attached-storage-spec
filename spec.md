@@ -178,6 +178,8 @@ Note that this is a _full_ update (partial updates via http `PATCH` verb might
 be supported later). However, some fields may not be updated (like `id`) and so
 may be omitted from the request payload.
 
+Note that this operation is idempotent.
+
 Example request (updating the name of a space):
 
 ```http
@@ -222,6 +224,37 @@ the space `id`):
   or a zcap granting permission to write to a particular space)
 * Deletes the space and all of the data (collections and resources) contained
   in it
+* Server responds with a Tombstone object (which will be later used for replication)
+* This operation is idempotent
+
+#### (HTTP API) DELETE `/spaces/{space_id}`
+
+Example request (no request body):
+
+```http
+DELETE /spaces/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  ... TODO: specify Tombstone format
+}
+```
+
+TODO: Decide whether subsequent GET requests to the same space should result in
+a 410 Gone, or the usual 404.
+
+Example error response (missing or invalid authorization):
+
+Example error response (invalid `id` provided):
 
 ## Collections
 
