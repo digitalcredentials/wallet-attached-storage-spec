@@ -4,35 +4,35 @@
 
 ## Goals and Requirements
 
-This storage specification is intended to support the following goals and 
+This storage specification is intended to support the following goals and
 requirements.
 
 ### Local-first and Offline capable storage
 
-Users and apps need to be able to use (provision, set up, and start reading and 
+Users and apps need to be able to use (provision, set up, and start reading and
 writing to) storage spaces without being connected to the internet.
 
 ### Storage and sharing of public, permissioned, and private encrypted data
 
-Although the local-first offline functionality is necessary, writing data to 
-stable internet-accessible URIs for the purposes of sharing them is one of the 
+Although the local-first offline functionality is necessary, writing data to
+stable internet-accessible URIs for the purposes of sharing them is one of the
 primary use cases of this specification.
 
-* A user needs to be able to write data (that is intended to be world-readable) 
+* A user needs to be able to write data (that is intended to be world-readable)
   to a cloud-accessible URI, and be able to send that URI to intended recipients
   via any out of band mechanism such as email, chat, and so on.
 
-* User needs to be able to change or revoke permissions at any point after 
-  sharing. Note that changed permissions apply only to subsequent operations 
+* User needs to be able to change or revoke permissions at any point after
+  sharing. Note that changed permissions apply only to subsequent operations
   (this spec is not intended to solve the general problem of DRM).
 
 * The sharing and permission system needs to be primarily based on authorization
-  capabilities (zcaps), but it needs to also support storage-side access control 
-  list or similar functionality (even if only as a way for an authorized client 
+  capabilities (zcaps), but it needs to also support storage-side access control
+  list or similar functionality (even if only as a way for an authorized client
   to receive an appropriate zcap)
 
 * The sharing mechanism needs to be flexible and granular. For example, a given
-  data resource needs to be: world-readable, or readable by groups or categories, 
+  data resource needs to be: world-readable, or readable by groups or categories,
   or by only those possessing the required authorization capabilities, or by 
   noone except the author or controller, etc
 
@@ -43,7 +43,7 @@ primary use cases of this specification.
 ### Stored data is opaque to the storage provider
 
 * The spec needs to support (though not require) end-to-end client side 
-  encryption of the space. For plausible deniability, this might need to include 
+  encryption of the space. For plausible deniability, this might need to include
   all all data (even marked as public-readable) is encrypted at rest
 
 ### Replication to user-controlled local and cloud servers
@@ -90,8 +90,8 @@ Data written to storage spaces using this specification needs to be portable:
   requires the previous service provider to be alive, available and cooperative.
   However, this is true only of public-readable URIs, and the moment permissions
   are involved, cross-domain redirects become very difficult.
-  In addition, portability from "dead servers" is also required. That is, if a 
-  cloud based service provider disappears (or is otherwise unavailable), but a 
+  In addition, portability from "dead servers" is also required. That is, if a
+  cloud based service provider disappears (or is otherwise unavailable), but a
   user still has a backup/export available, they should be able to set up another
   storage server (on another web domain or network address), and import/restore
   the data from backup, without shares and permissions breaking (agents that
@@ -142,10 +142,10 @@ This storage specification is intentionally positioned to not be used in
 and replication nodes while solely relying on encryption as the authorization
 mechanism.
 
-To put it a different way -- all encryption has an unpredictable half life, and 
+To put it a different way -- all encryption has an unpredictable half life, and
 some use cases do not permit relying on encryption only for access control.
-Instead a _combination_ of encryption and authorization enforcement by minimally
-trusted storage servers is required.
+Instead, a _combination_ of encryption and authorization enforcement by
+minimally trusted storage servers is required.
 
 ## Terminology
 
@@ -380,13 +380,43 @@ Example error response (invalid `id` provided):
 
 ## Collections
 
+A collection is a namespace for Resources, and a unit of configuration, within
+a space.
+
+In other storage systems, a collection is also known as: Directory, Folder,
+RDBMS Table, Document Collection, Graph, WebAPI FileList, Bucket, Solid
+Container, EDV Vault, DWN Collection, and so on.
+
+The use of collections is optional -- when a Space is created, the default `/`
+collection is automatically created within that Space.
+
 ### Collection Data Model
 
-#### Collection JSON Representation (ActivityPub profile)
+Collection properties:
+
+* `id`
+* `name` - human readable shortname, url slug
+* `type` - A sorted array of strings, MUST include the type `Collection`.
+* `contents`
+* (tbd) a link to the **system meta** auxiliary object
+* (tbd) one or more links to controller-modifiable **custom meta** auxiliary
+  objects
+
+#### Collection JSON Representation (Activity Streams 2 profile)
+
+Example empty collection, in AS2 format:
+
+```js
+{
+  // id?
+  // name?
+  "type": ["Collection"],
+  "totalItems": 0,
+  "items": []
+}
+```
 
 ### Collection Operations
-
-#### Collection HTTP API
 
 ## Resources and Blobs
 
