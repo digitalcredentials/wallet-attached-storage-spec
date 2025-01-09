@@ -408,11 +408,12 @@ Blob properties:
 ### Resource Data Model
 
 A resource is a named (addressable) blob stored in a Space, with metadata.
-The data model is derived from w3c FileAPI: File Interface, but with the
-addition of a few crucial properties.
+The data model is derived from [W3C FileAPI: File 
+Interface](https://w3c.github.io/FileAPI/#file-section), but with the addition
+of a few crucial properties.
 
 In similar storage systems, a resource is called "File", "Object", "Document",
-"Row", "Graph", "RDF Dataset", and so on.
+"Row", "Graph", and so on.
 
 Resource properties:
 
