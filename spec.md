@@ -402,7 +402,8 @@ Blob properties:
   - Note: Although size can be derived from bytes, it's useful to be able to
     have it up front (for the receiving system to decide to reject an upload
     based on quota / exceeding max size, etc).
-* `type` (required) (from the IANA mime type registry)
+* `type` (from the IANA mime type registry) - If not specified, defaults to
+  `application/octet-stream`
 
 ### Resource Data Model
 
