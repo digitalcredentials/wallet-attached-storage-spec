@@ -207,7 +207,7 @@ Example success response:
 ```http
 HTTP/1.1 201 Created
 Content-type: application/json
-Location: https://example.com/spaces/81246131-69a4-45ab-9bff-9c946b59cf2e
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e
 
 {
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
@@ -236,12 +236,12 @@ Example error response (a space with the specified `id` already exists):
   or a zcap granting permission to read a particular space)
 * Returns the details for the specified space `id`
 
-#### (HTTP API) GET `/spaces/{space_id}`
+#### (HTTP API) GET `/space/{space_id}`
 
 Example request:
 
 ```http
-GET /spaces/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
 Host: example.com
 Accept: application/json
 Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
@@ -311,7 +311,7 @@ Example error response (missing authorization):
   - `name`
   - `controller`
 
-#### (HTTP API) PUT `/spaces/{space_id}`
+#### (HTTP API) PUT `/space/{space_id}`
 
 Note that this is a _full_ update (partial updates via http `PATCH` verb might
 be supported later). However, some fields may not be updated (like `id`) and so
@@ -322,7 +322,7 @@ Note that this operation is idempotent.
 Example request (updating the name of a space):
 
 ```http
-PUT /spaces/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
+PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
 Host: example.com
 Content-type: application/json
 Accept: application/json
@@ -356,12 +356,12 @@ the space `id`):
   in it
 * This operation is idempotent
 
-#### (HTTP API) DELETE `/spaces/{space_id}`
+#### (HTTP API) DELETE `/space/{space_id}`
 
 Example request (no request body):
 
 ```http
-DELETE /spaces/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
+DELETE /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
 Host: example.com
 Accept: application/json
 Authorization: ...
