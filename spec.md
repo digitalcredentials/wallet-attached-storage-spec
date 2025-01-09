@@ -392,7 +392,7 @@ Example error response (invalid `id` provided):
 
 ### Blob Data Model
 
-A logical unit of data, in transit or at rest.
+A unit of data, in transit or at rest.
 (As described in the [W3c FileAPI: Blob Interface](https://w3c.github.io/FileAPI/#blob-section)).
 
 Blob properties:
