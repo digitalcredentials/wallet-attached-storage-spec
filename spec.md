@@ -418,7 +418,6 @@ In similar storage systems, a resource is called "File", "Object", "Document",
 Resource properties:
 
 * `id`
-* `contents` (Blob)
 * `name` - optional
 * Links to any metadata objects controlled by the DataPub server
 * Links to any metadata objects modifiable by the resource's controller
