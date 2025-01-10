@@ -398,9 +398,6 @@ Collection properties:
 * `name` - human readable shortname, url slug
 * `type` - A sorted array of strings, MUST include the type `Collection`.
 * `contents`
-* (tbd) a link to the **system meta** auxiliary object
-* (tbd) one or more links to controller-modifiable **custom meta** auxiliary
-  objects
 
 #### Collection JSON Representation (Activity Streams 2 profile)
 
