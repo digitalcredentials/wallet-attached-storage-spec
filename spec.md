@@ -397,7 +397,8 @@ Collection properties:
 * `id`
 * `name` - human readable shortname, url slug
 * `type` - A sorted array of strings, MUST include the type `Collection`.
-* `contents`
+* Links to any metadata objects controlled by the DataPub server
+* Links to any metadata objects modifiable by the collection's controller
 
 #### Collection JSON Representation (Activity Streams 2 profile)
 
