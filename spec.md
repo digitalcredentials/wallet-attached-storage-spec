@@ -420,21 +420,8 @@ Resource properties:
 * `id`
 * `contents` (Blob)
 * `name` - optional
-* (tbd) a link to a **system-meta** auxiliary object (determined by the local
-  system)
-* (tbd) one or more links to **custom-meta** auxiliary objects (unlike
-  system-meta, these are modifiable by the object's controller)
-
-Example **system-meta** properties (not directly modifiable, controlled by the
-system):
-
-- contents size (in bytes)
-- total size in bytes (contents + metadata)
-- created timestamp (optional)
-- updated timestamp (optional)
-- last accessed timestamp (optional)
-- creator (optional) - id of the agent that created this resource
-
+* Links to any metadata objects controlled by the DataPub server
+* Links to any metadata objects modifiable by the resource's controller
 ### Resource Operations
 
 #### Resource HTTP API
