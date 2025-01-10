@@ -387,7 +387,7 @@ In other storage systems, a collection is also known as: Directory, Folder,
 RDBMS Table, Document Collection, Graph, WebAPI FileList, Bucket, Solid
 Container, EDV Vault, DWN Collection, and so on.
 
-The use of collections is optional -- when a Space is created, the default `/`
+The use of collections is optional -- when a Space is created, the default
 collection is automatically created within that Space.
 
 ### Collection Data Model
