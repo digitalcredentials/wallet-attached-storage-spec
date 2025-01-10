@@ -394,8 +394,6 @@ collection is automatically created within that Space.
 
 Collection properties:
 
-* `id`
-* `name` - human readable shortname, url slug
 * `type` - A sorted array of strings, MUST include the type `Collection`.
 * Links to any metadata objects controlled by the DataPub server
 * Links to any metadata objects modifiable by the collection's controller
