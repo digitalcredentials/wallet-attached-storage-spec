@@ -406,8 +406,6 @@ Example empty collection, in AS2 format:
 
 ```js
 {
-  // id?
-  // name?
   "type": ["Collection"],
   "totalItems": 0,
   "items": []
