@@ -431,7 +431,7 @@ Blob properties:
 
 ### Resource Data Model
 
-A resource is a named (addressable) object stored in a Space, with metadata.
+A resource is a named (addressable) object stored in a [=space=], with metadata.
 The data model is derived from [W3C FileAPI: File 
 Interface](https://w3c.github.io/FileAPI/#file-section), but with the addition
 of a few crucial properties.
@@ -445,9 +445,99 @@ Resource properties:
 * `name` - optional
 * Links to any metadata objects controlled by the DataPub server
 * Links to any metadata objects modifiable by the resource's controller
-### Resource Operations
 
-#### Resource HTTP API
+### Create Resource Operation
+
+A resource is created by making a Create Resource request to a given [=space=],
+and (optionally) a [=collection=]. If a collection is not explicitly specified,
+the resource is created in that space's [=default collection=].
+
+Using the HTTP API, a resource can be created either by making a POST request
+to a space and collection, or by making a PUT request to a specific resource
+(see the Update Resource operation).
+
+#### (HTTP API) POST `/spaces/{space_id}/{collection/*}`
+
+* Requires appropriate authorization
+  - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
+    [`POST` action](#post-action) on the collection
+* TODO: Specify the request being able to ask for the resource name via `Slug`
+  header
+* This operation is not idempotent (unlike creating a resource using `PUT`)
+
+Example request to create a resource via POST to the `messages` collection:
+
+```http
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/ HTTP/1.1
+Host: example.com
+Content-Type: application/json
+
+{"message":"hi"}
+```
+
+Example success response:
+
+```http
+HTTP/1.1 201 Created
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/5cec79bc-b86d-4c61-94f4-3acf2553f13c
+```
+
+* TODO: Add example 404 error response where a missing or invalid space or
+  collection is specified, or if the request carries insufficient or
+  missing authorization
+* TODO: Add example "over storage quota" error response
+
+### Read Resource Operation
+
+### Update Resource Operation
+
+* If an Update operation is performed on a resource that does not already exist,
+  it is treated as a Create Resource operation.
+
+#### (HTTP API) PUT `/spaces/{space_id}/{collection/*}{resource_name}`
+
+* Requires appropriate authorization
+  - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
+    [`PUT` action](#put-action) on the appropriate resource.
+* This operation is idempotent
+* Returns a `201` success response if the resource has actually been created
+  (if no resource of that name and content type already existed)
+* Otherwise (if a resource of that name and content type already existed), this
+  is treated as an Update Resource operation, and a `204` success response is
+  returned
+
+Example request to create a resource via PUT to the `messages` collection:
+
+```http
+PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world HTTP/1.1
+Host: example.com
+Content-Type: application/json
+
+{"message":"hi"}
+```
+
+Example success response (assuming the resource with that name and content type
+did not already exist):
+
+```http
+HTTP/1.1 201 Created
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world
+```
+
+Example success response (assuming the resource with that name and content type
+already existed):
+
+```http
+HTTP/1.1 204 No Content
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world
+```
+
+* TODO: Add example 404 error response where a missing or invalid space or
+  collection is specified, or if the request carries insufficient or missing
+  authorization
+* TODO: Add example "over storage quota" error response
+
+### Delete Resource Operation
 
 ## Security and Privacy Considerations
 
