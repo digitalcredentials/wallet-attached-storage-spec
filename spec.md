@@ -448,6 +448,34 @@ Resource properties:
 
 ### Read Resource Operation
 
+* TODO: Add language on content negotiation
+
+#### (HTTP API) GET `/spaces/{space_id}/{collection/*}{resource_name}`
+
+* Requires appropriate authorization
+    - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
+      [`GET` action](#get-action).
+
+Example request to retrieve a resource:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world HTTP/1.1
+Host: example.com
+Accept: application/json
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{"message":"hi"}
+```
+
+* TODO: Add example 404 error response where a missing or invalid resource is
+  specified, or if the request carries insufficient or missing authorization
+
 ### Update Resource Operation
 
 #### (HTTP API) PUT `/spaces/{space_id}/{collection/*}{resource_name}`
@@ -481,6 +509,32 @@ HTTP/1.1 204 No Content
 * TODO: Add example "over storage quota" error response
 
 ### Delete Resource Operation
+
+#### (HTTP API) DELETE `/spaces/{space_id}/{collection/*}{resource_name}`
+
+* Requires appropriate authorization
+  - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
+    [`DELETE` action](#put-action) on the appropriate resource.
+* This operation is idempotent
+* (Assuming the request carries appropriate authorization) Sending a DELETE
+  request to a resource that does not exist (or has already been deleted)
+  results in a 204 success response
+
+Example request to delete a resource via DELETE:
+
+```http
+DELETE /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world HTTP/1.1
+Host: example.com
+```
+
+Example success response:
+
+```http
+HTTP/1.1 204 No Content
+```
+
+* TODO: Add example 404 error response if the request carries insufficient or
+  missing authorization
 
 ## Security and Privacy Considerations
 
