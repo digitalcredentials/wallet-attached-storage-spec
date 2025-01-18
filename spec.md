@@ -459,8 +459,10 @@ to a space and collection, or by making a PUT request to a specific resource
 #### (HTTP API) POST `/spaces/{space_id}/{collection/*}`
 
 * Requires appropriate authorization
-  - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
-    [`POST` action](#post-action) on the collection
+  - For example, when using [zCAPs](#zcap) for authorization, the request
+    must either: be signed by the resource's or the space's [=controller=],
+    or invoke a delegated capability that allows the [`PUT` action](#put-action)
+
 * TODO: Specify the request being able to ask for the resource name via `Slug`
   header
 * This operation is not idempotent (unlike creating a resource using `PUT`)
@@ -497,8 +499,9 @@ Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/message
 #### (HTTP API) PUT `/spaces/{space_id}/{collection/*}{resource_name}`
 
 * Requires appropriate authorization
-  - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
-    [`PUT` action](#put-action) on the appropriate resource.
+  - For example, when using [zCAPs](#zcap) for authorization, the request
+    must either: be signed by the resource's or the space's [=controller=],
+    or invoke a delegated capability that allows the [`PUT` action](#put-action)
 * This operation is idempotent
 * Returns a `201` success response if the resource has actually been created
   (if no resource of that name and content type already existed)
