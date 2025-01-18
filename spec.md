@@ -514,7 +514,7 @@ HTTP/1.1 204 No Content
 
 * Requires appropriate authorization
   - Invoking this method via [ZCAP](#zcap) requires a capability allowing the
-    [`DELETE` action](#put-action) on the appropriate resource.
+    [`DELETE` action](#delete-action) on the appropriate resource.
 * This operation is idempotent
 * (Assuming the request carries appropriate authorization) Sending a DELETE
   request to a resource that does not exist (or has already been deleted)
