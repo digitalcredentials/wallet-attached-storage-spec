@@ -431,11 +431,13 @@ Authorization: ...
 HTTP/1.1 201 Created
 ```
 
-### List Collection operation
+### Get Collection operation
+
+* Returns the collection metadata and item contents
 
 #### (HTTP API) GET `/space/{space_id}/{collection_slug|collection_id}/`
 
-Example request (listing a collection by its slug):
+Example request (getting a collection by its slug):
 
 ```http
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
@@ -444,7 +446,7 @@ Accept: application/json
 Authorization: ...
 ```
 
-Equivalent request (listing a collection by its id):
+Equivalent request (getting a collection by its id):
 
 ```http
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
