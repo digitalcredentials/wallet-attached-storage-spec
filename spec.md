@@ -412,10 +412,10 @@ Example empty collection, in AS2 format:
 
 ### Create or Update Collection operation
 
-#### (HTTP API) PUT `/space/{space_id}/{collection_slug}/`
+#### (HTTP API) PUT `/space/{space_id}/{collection_id}/`
 
 ```http
-PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
+PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
 Host: example.com
 Content-Type: application/json
 Authorization: ...
@@ -435,18 +435,9 @@ HTTP/1.1 201 Created
 
 * Returns the collection metadata and item contents
 
-#### (HTTP API) GET `/space/{space_id}/{collection_slug|collection_id}/`
+#### (HTTP API) GET `/space/{space_id}/{collection_id}/`
 
-Example request (getting a collection by its slug):
-
-```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
-Host: example.com
-Accept: application/json
-Authorization: ...
-```
-
-Equivalent request (getting a collection by its id):
+Example request (getting a collection by its id):
 
 ```http
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
@@ -472,7 +463,7 @@ Content-type: application/json
 
 ### Delete Collection operation
 
-#### (HTTP API) DELETE `/space/{space_id}/{collection_slug|collection_id}/`
+#### (HTTP API) DELETE `/space/{space_id}/{collection_id}/`
 
 ## Resources and Blobs
 
