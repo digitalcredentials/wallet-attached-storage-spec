@@ -410,12 +410,12 @@ Example empty collection, in AS2 format:
 }
 ```
 
-### Create Collection operation
+### Create or Update Collection operation
 
-#### (HTTP API) POST `/space/{space_id}/{collection_slug}/`
+#### (HTTP API) PUT `/space/{space_id}/{collection_slug}/`
 
 ```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
+PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
 Host: example.com
 Accept: application/json
 Authorization: ...
