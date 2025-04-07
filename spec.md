@@ -410,7 +410,67 @@ Example empty collection, in AS2 format:
 }
 ```
 
-### Collection Operations
+### Create Collection operation
+
+#### (HTTP API) POST `/space/{space_id}/{collection_slug}/`
+
+```http
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+
+{
+  "id": "73WakrfVbNJBaAmhQtEeDv",
+  "name": "Verifiable Credentials Collection",
+  "type": ["Collection"]
+}
+```
+
+```http
+HTTP/1.1 201 Created
+```
+
+### List Collection operation
+
+#### (HTTP API) GET `/space/{space_id}/{collection_slug|collection_id}/`
+
+Example request (listing a collection by its slug):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Equivalent request (listing a collection by its id):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Example response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "id": "73WakrfVbNJBaAmhQtEeDv",
+  "name": "Verifiable Credentials Collection",
+  "type": ["Collection"],
+  "totalItems": 0,
+  "items": []
+}
+```
+
+### Delete Collection operation
+
+#### (HTTP API) DELETE `/space/{space_id}/{collection_slug|collection_id}/`
 
 ## Resources and Blobs
 
