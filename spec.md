@@ -395,7 +395,7 @@ collection is automatically created within that Space.
 Collection properties:
 
 * `type` - A sorted array of strings, MUST include the type `Collection`.
-* Links to any metadata objects controlled by the DataPub server
+* Links to any metadata objects controlled by the Wallet Attached Storage Server
 * Links to any metadata objects modifiable by the collection's controller
 
 #### Collection JSON Representation (Activity Streams 2 profile)
@@ -443,7 +443,7 @@ Resource properties:
 
 * `id`
 * `name` - optional
-* Links to any metadata objects controlled by the DataPub server
+* Links to any metadata objects controlled by the Wallet Attached Storage server
 * Links to any metadata objects modifiable by the resource's controller
 
 ### Read Resource Operation
