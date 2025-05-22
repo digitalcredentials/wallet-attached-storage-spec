@@ -241,14 +241,14 @@ for any operations on the space or its collections or resources.
 That is, any operation requiring an authorization MUST provide a chain of proof
 all the way to the space controller, by one of the following:
 
-1. Provide a root capability invoked directly by the controller, or
-2. Invoke a capability delegated to some other agent by the controller, or
-3. (if using any kind of access control policy mechanism) Match an authorization
-   policy specified in the corresponding linked resource. This resource is
-   related to the space controller because it can only be modified either by
-   the controller or an authorized party delegated to by the controller
+1. Direct: Provide a root capability invoked directly by the controller, or
+2. Delegated: Invoke a capability delegated to some other agent by the controller, or
+3. Matching Policy: (if using any kind of access control policy mechanism) Match
+   an authorization policy specified in the corresponding linked resource. This
+   resource is related to the space controller because it can only be modified
+   either by the controller or an authorized party delegated to by the controller.
 
-### Performing Authorized API Calls
+#### Performing Authorized API Calls
 
 
 
@@ -263,6 +263,9 @@ all the way to the space controller, by one of the following:
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
 * `controller` - Determined by server based on who creates the space originally.
+* `link` (optional) - A URL (relative or absolute) to a resource which contains
+  a set of links to auxiliary resources (such as to access control policy
+  documents)
 
 #### Space JSON Representation
 
@@ -296,7 +299,8 @@ Content-type: application/json
 Authorization: ...
 
 {
-  "name": "Example space #1"
+  "name": "Example space #1",
+  "link": "acl"
 }
 ```
 
@@ -311,7 +315,8 @@ Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
   "type": ["Space"],
   "name": "Example space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
+  "link": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl"
 }
 ```
 
@@ -353,7 +358,8 @@ Content-type: application/json
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
   "type": ["Space"],
   "name": "Example space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
+  "link": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl"
 }
 ```
 
@@ -406,6 +412,7 @@ Example error response (missing authorization):
 * Allows to update the following fields:
   - `name`
   - `controller`
+  - `link`
 
 #### (HTTP API) PUT `/space/{space_id}`
 
@@ -427,7 +434,8 @@ Authorization: ...
 {
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
   "name": "Newly renamed space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
+  "link": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl"
 }
 ```
 
