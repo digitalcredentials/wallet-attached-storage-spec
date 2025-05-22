@@ -182,19 +182,74 @@ operations requires an authorization system that is:
   to provide ACL or RBAC-like functionality for user convenience. In other words,
   the system needs to support both "anyone with the link can..." and "these are
   specific people and groups allowed to..." styles of access control
-* Be compatible with cross-domain replication
-* Be compatible with end-to-end client side encryption (but also not rely on
+* Compatible with cross-domain replication
+* Compatible with end-to-end client side encryption (but also not rely on
   encryption as the sole authorization method)
+* "Private by default".
+  That is, by default, unless otherwise specified, only the controller of a
+  space (or of a collection or resource) is authorized to perform any operation
+  (read, write, delete, etc)
 
-To that end, this specification proposes the following set of authorization
-interoperability requirements:
+As the state of the art in cross-domain authorization advances, we expect there
+to be multiple profiles and specs that could be used to perform WAS API
+calls. However, to start with, this specification will focus on a single minimal
+authorization profile.
 
-1. Spaces, collections, and individual resources must be "private by default"
-   (also sometimes referred to as "locked closed"). That is, by default,
-   unless otherwise specified, only the controller of a space (or of a
-   collection or resource) is authorized to perform any operation (read, write,
-   delete, etc).
-2. To support a wide variety of 
+### WAS Authorization Profile v0.1
+
+The initial W.A.S. Authorization Profile uses the following specifications.
+
+1. Identity (for controllers or clients/agents): [DID 1.1](https://www.w3.org/TR/did-1.1/)
+   or [CID 1.0](https://www.w3.org/TR/cid-1.0/) identifiers.
+2. Capability data model: [Authorization Capabilities for Linked Data v0.3](https://w3c-ccg.github.io/zcap-spec/)
+3. Authorization request protocol: Out of scope (implementers are encouraged to
+   use VC-API, OpenId4VP, or GNAP, as appropriate)
+4. Proof of Possession / authorization invocation: [HTTP Signatures (Cavage
+   draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
+5. Access Control / Policy language data model: TBD
+
+#### Space `controller` and the Root of Trust
+
+Space `controller`s MUST be in the form of a [DID](https://www.w3.org/TR/did-1.1/)
+or a [CID](https://www.w3.org/TR/cid-1.0/) identifier.
+
+For minimal compatibility, all WAS implementations MUST support the
+[`did:key` DID Method](https://w3c-ccg.github.io/did-key-spec/), using the
+Multikey encoding of `Ed25519` elliptic curve keys, as specified in the
+[Multikey section of the CID spec](https://www.w3.org/TR/cid-1.0/#Multikey)
+as the space `controller`.
+
+When a space is created via an HTTP [POST](#http-api-post-spaces) or
+[PUT](#http-api-put-space-space_id) operation, the controller for that space
+is set, either implicitly or explicitly. 
+
+Implicitly, if no `controller` is specified in the PUT or POST create space
+request, the server MUST determine and set the `controller` from the corresponding
+authorization headers of the request (for example, from the `Authorization` header
+when using HTTP Signatures).
+
+Explicitly, if a client specifies the `controller` as part of the payload
+of the PUT or POST create space request, the server MUST check that the methods
+(key IDs) used in the headers are authorized in the `capabilityInvocation`
+section of the `controller`'s DID (or CID) document.
+
+See below in the [HTTP POST](#http-api-post-spaces) sections for examples of
+`controller` determination and verification.
+
+Conceptually, the space's controller serves as the root of trust / authorization
+for any operations on the space or its collections or resources.
+That is, any operation requiring an authorization MUST provide a chain of proof
+all the way to the space controller, by one of the following:
+
+1. Provide a root capability invoked directly by the controller, or
+2. Invoke a capability delegated to some other agent by the controller, or
+3. (if using any kind of access control policy mechanism) Match an authorization
+   policy specified in the corresponding linked resource. This resource is
+   related to the space controller because it can only be modified either by
+   the controller or an authorized party delegated to by the controller
+
+### Performing Authorized API Calls
+
 
 
 ## Spaces
