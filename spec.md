@@ -1,6 +1,25 @@
 ## Introduction
 
-### Overview
+The Wallet Attached Storage (WAS) specification brings together the lessons
+learned from numerous attempts to standardize permissioned cloud storage over
+the years.
+
+Initial use cases that are motivating this work:
+
+* Sharing of W3C Verifiable Credentials from mobile credential wallets, as well
+  as document sharing in general
+* Enabling data portability and service provider interoperability for
+  user-controlled social networking
+* Providing data storage and authorization frameworks for Agentic AI
+* Enabling the "bring your own storage" architecture pattern of web app development
+
+This specification aims to provide:
+
+* A set of design constraints, goals and requirements for WAS
+* An HTTP API for reading and writing to permissioned cloud storage, to serve
+  as a unifying interface for file and folder storage, object and bucket storage,
+  as well as databases (including RDBMSs, document stores, graph stores, etc)
+* An authorization and authentication framework for use with this storage
 
 ## Goals and Requirements
 
