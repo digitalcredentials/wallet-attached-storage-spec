@@ -173,6 +173,30 @@ minimally trusted storage servers is required.
 
 ## Authorization
 
+The ability to do cross-domain, operator-independent, standardized cloud storage
+operations requires an authorization system that is:
+
+* Modular and layered (for future agility / upgradability)
+* Not limited to traditional domain-based "usernames and passwords"
+* A hybrid, using object capability principles at its baseline, but also able
+  to provide ACL or RBAC-like functionality for user convenience. In other words,
+  the system needs to support both "anyone with the link can..." and "these are
+  specific people and groups allowed to..." styles of access control
+* Be compatible with cross-domain replication
+* Be compatible with end-to-end client side encryption (but also not rely on
+  encryption as the sole authorization method)
+
+To that end, this specification proposes the following set of authorization
+interoperability requirements:
+
+1. Spaces, collections, and individual resources must be "private by default"
+   (also sometimes referred to as "locked closed"). That is, by default,
+   unless otherwise specified, only the controller of a space (or of a
+   collection or resource) is authorized to perform any operation (read, write,
+   delete, etc).
+2. To support a wide variety of 
+
+
 ## Spaces
 
 ### Space Data Model
