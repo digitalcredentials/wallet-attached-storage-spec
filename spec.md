@@ -244,7 +244,7 @@ all the way to the space controller, by one of the following:
 1. Direct: Provide a root capability invoked directly by the controller, or
 2. Delegated: Invoke a capability delegated to some other agent by the controller, or
 3. Matching Policy: (if using any kind of access control policy mechanism) Match
-   an authorization policy specified in the corresponding linked resource. This
+   an authorization policy specified in the `link` property of the space. This
    resource is related to the space controller because it can only be modified
    either by the controller or an authorized party delegated to by the controller.
 
