@@ -202,8 +202,8 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 1. Identity (for controllers or clients/agents): [DID 1.1](https://www.w3.org/TR/did-1.1/)
    or [CID 1.0](https://www.w3.org/TR/cid-1.0/) identifiers.
 2. Capability data model: [Authorization Capabilities for Linked Data v0.3](https://w3c-ccg.github.io/zcap-spec/)
-3. Authorization request protocol: Out of scope (implementers are encouraged to
-   use VC-API, OpenId4VP, or GNAP, as appropriate)
+3. Protocol for obtaining authorization: Out of scope (implementers are encouraged
+   to use VC-API, OpenId4VP, or GNAP, as appropriate)
 4. Proof of Possession / authorization invocation: [HTTP Signatures (Cavage
    draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
 5. Access Control / Policy language data model: TBD
