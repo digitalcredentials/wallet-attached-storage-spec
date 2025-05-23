@@ -200,7 +200,6 @@ authorization profile.
 The initial W.A.S. Authorization Profile uses the following specifications.
 
 1. Identity (for controllers or clients/agents): [DID 1.1](https://www.w3.org/TR/did-1.1/)
-   or [CID 1.0](https://www.w3.org/TR/cid-1.0/) identifiers.
 2. Capability data model: [Authorization Capabilities for Linked Data v0.3](https://w3c-ccg.github.io/zcap-spec/)
 3. Protocol for obtaining authorization: Out of scope (implementers are encouraged
    to use VC-API, OpenId4VP, or GNAP, as appropriate)
@@ -210,8 +209,7 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 
 #### Space `controller` and the Root of Trust
 
-Space `controller`s MUST be in the form of a [DID](https://www.w3.org/TR/did-1.1/)
-or a [CID](https://www.w3.org/TR/cid-1.0/) identifier.
+Space `controller`s MUST be in the form of a [DID](https://www.w3.org/TR/did-1.1/).
 
 For minimal compatibility, all WAS implementations MUST support the
 [`did:key` DID Method](https://w3c-ccg.github.io/did-key-spec/), using the
@@ -231,7 +229,7 @@ when using HTTP Signatures).
 Explicitly, if a client specifies the `controller` as part of the payload
 of the PUT or POST create space request, the server MUST check that the methods
 (key IDs) used in the headers are authorized in the `capabilityInvocation`
-section of the `controller`'s DID (or CID) document.
+section of the `controller`'s DID document.
 
 See below in the [HTTP POST](#http-api-post-spaces) sections for examples of
 `controller` determination and verification.
@@ -263,10 +261,9 @@ Clients performing
 * `type` - A sorted array of strings, MUST include the type `Space`.
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
-* `controller` - A cryptographic identifier (a [DID](https://www.w3.org/TR/did-1.1/)
-  or a [CID](https://www.w3.org/TR/cid-1.0/)) of the entity that is authorized
-  to perform operations on the space (or to delegate authorization to other
-  entities)
+* `controller` - A cryptographic identifier (a [DID](https://www.w3.org/TR/did-1.1/)) 
+  of the entity that is authorized to perform operations on the space (or to
+  delegate authorization to other entities)
 * `link` (optional) - A URL (relative or absolute) to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
   documents)
