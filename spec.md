@@ -229,7 +229,7 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 4. Proof of Possession / authorization invocation: HTTP Signatures.
    MUST - [RFC 9421 HTTP Message Signatures](https://www.rfc-editor.org/rfc/rfc9421.html),
    MAY - [HTTP Signatures (Cavage draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
-5. Access Control / Policy language data model: TBD
+5. Access Control / Policy language data model: TBD (see <#16>)
 
 ### Space `controller` and the Root of Trust
 
