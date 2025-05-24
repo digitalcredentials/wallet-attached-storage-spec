@@ -222,7 +222,7 @@ To that end, the profile offers the following layered mechanisms.
 
 The initial W.A.S. Authorization Profile uses the following specifications.
 
-1. Identity (for controllers or clients/agents): [DID 1.1](https://www.w3.org/TR/did-1.1/)
+1. Identity (for controllers or clients/agents): [DID 1.0](https://www.w3.org/TR/did-1.0/)
 2. Capability data model: [Authorization Capabilities for Linked Data v0.3](https://w3c-ccg.github.io/zcap-spec/)
 3. Protocol for obtaining authorization: Out of scope (implementers are encouraged
    to use VC-API, OpenId4VP, OAuth2, or GNAP, as appropriate)
@@ -233,7 +233,7 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 
 ### Space `controller` and the Root of Trust
 
-Space `controller`s MUST be in the form of a [DID](https://www.w3.org/TR/did-1.1/).
+Space `controller`s MUST be in the form of a [DID](https://www.w3.org/TR/did-1.0/).
 
 For minimal compatibility, all WAS implementations MUST support the
 [`did:key` DID Method](https://w3c-ccg.github.io/did-key-spec/), using the
@@ -341,7 +341,7 @@ Content-type: application/json; profile="was authz profile v0.1"
 * `type` - A sorted array of strings, MUST include the type `Space`.
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
-* `controller` - A cryptographic identifier (a [DID](https://www.w3.org/TR/did-1.1/)) 
+* `controller` - A cryptographic identifier (a [DID](https://www.w3.org/TR/did-1.0/)) 
   of the entity that is authorized to perform operations on the space (or to
   delegate authorization to other entities)
 * `link` (optional) - A URL (relative or absolute) to a resource which contains
