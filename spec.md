@@ -197,12 +197,35 @@ authorization profile.
 
 ### WAS Authorization Profile v0.1
 
+Like many authorization specifications, the W.A.S. Authorization Profile tries
+to address opposing tensions. On the one hand, to cover the full range of use
+cases, it needs to be delegatable, revocable, secure, flexible, and thus
+capability based. On the other hand, for ease of implementation and adoption,
+and for maximum developer usability, the profile must make the most common
+operations as simple and friction free as possible.
+
+To that end, the profile offers the following layered mechanisms.
+
+1. **Root Access**: For basic admin CRUD operations, use the space's `controller`
+   DID directly to sign API calls with HTTP Signatures.
+2. **Public Read**: For the common "public read" use case (the typical web
+   publishing workflow, where a site or a file is shared for anyone to access
+   via an HTTP GET), use the simple `publicRead: true` WAS Authorization syntax,
+   see below.
+3. **Advanced Delegatable Capabilities** ("anyone with the link..." style):
+   Use zCaps [Authorization Capabilities v0.3](https://w3c-ccg.github.io/zcap-spec/)
+4. **Policy Based Access Control** (including the familiar "share with this list
+   of people or groups" style): Use the space's `link` property to point to
+   a linkset that includes a URL to an access control policy document.
+
+#### Authorization Specifications at a Glance
+
 The initial W.A.S. Authorization Profile uses the following specifications.
 
 1. Identity (for controllers or clients/agents): [DID 1.1](https://www.w3.org/TR/did-1.1/)
 2. Capability data model: [Authorization Capabilities for Linked Data v0.3](https://w3c-ccg.github.io/zcap-spec/)
 3. Protocol for obtaining authorization: Out of scope (implementers are encouraged
-   to use VC-API, OpenId4VP, or GNAP, as appropriate)
+   to use VC-API, OpenId4VP, OAuth2, or GNAP, as appropriate)
 4. Proof of Possession / authorization invocation: [HTTP Signatures (Cavage
    draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
 5. Access Control / Policy language data model: TBD
@@ -249,7 +272,8 @@ all the way to the space controller, by one of the following:
 
 #### Performing Authorized API Calls
 
-Clients performing 
+Unless otherwise explicitly allowed via access control policy (see below),
+all W.A.S. API calls require authorization.
 
 ## Spaces
 
