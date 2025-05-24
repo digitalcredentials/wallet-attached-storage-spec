@@ -195,7 +195,7 @@ to be multiple profiles and specs that could be used to perform WAS API
 calls. However, to start with, this specification will focus on a single minimal
 authorization profile.
 
-### WAS Authorization Profile v0.1
+## WAS Authorization Profile v0.1
 
 Like many authorization specifications, the W.A.S. Authorization Profile tries
 to address opposing tensions. On the one hand, to cover the full range of use
@@ -218,7 +218,7 @@ To that end, the profile offers the following layered mechanisms.
    of people or groups" style): Use the space's `link` property to point to
    a linkset that includes a URL to an access control policy document.
 
-#### Authorization Specifications at a Glance
+### Authorization Specification Dependencies at a Glance
 
 The initial W.A.S. Authorization Profile uses the following specifications.
 
@@ -230,7 +230,7 @@ The initial W.A.S. Authorization Profile uses the following specifications.
    draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
 5. Access Control / Policy language data model: TBD
 
-#### Space `controller` and the Root of Trust
+### Space `controller` and the Root of Trust
 
 Space `controller`s MUST be in the form of a [DID](https://www.w3.org/TR/did-1.1/).
 
@@ -270,10 +270,65 @@ all the way to the space controller, by one of the following:
    modified either by the controller or an authorized party delegated to by the
    controller.
 
-#### Performing Authorized API Calls
+### Performing Authorized API Calls
 
 Unless otherwise explicitly allowed via access control policy (see below),
 all W.A.S. API calls require authorization.
+
+This can be done in one of two ways:
+
+1. (for admin-like root access) Use the `controller` DID directly to sign
+   HTTP API requests using the HTTP Signatures specification.
+2. (for advanced delegatable use cases) Use HTTP Signatures in combination
+   with [Authorization Capabilities v0.3](https://w3c-ccg.github.io/zcap-spec/),
+   and include a capability invocation header in the API request.
+
+### Specifying Access Policy With Space Link Sets
+
+To set access control policy for a space, use the `link` property.
+
+Example (fetching a space's link set):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/links HTTP/1.1
+Host: example.com
+Accept: application/linkset+json
+Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/linkset+json
+
+{
+  "linkset": [
+    {
+      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
+      "acl": [
+        "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
+        "media": "application/json; profile=\"was authz profile v0.1\""
+      ]
+    }
+  ]
+}
+```
+
+Example (fetching a specific policy document from the link set):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl HTTP/1.1
+Host: example.com
+Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
+```
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json; profile="was authz profile v0.1"
+
+{ publicRead: true }
+```
 
 ## Spaces
 
@@ -291,8 +346,6 @@ all W.A.S. API calls require authorization.
 * `link` (optional) - A URL (relative or absolute) to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
   documents)
-
-#### Space JSON Representation
 
 ### Create Space operation
 
