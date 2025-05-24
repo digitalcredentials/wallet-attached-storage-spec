@@ -226,8 +226,9 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 2. Capability data model: [Authorization Capabilities for Linked Data v0.3](https://w3c-ccg.github.io/zcap-spec/)
 3. Protocol for obtaining authorization: Out of scope (implementers are encouraged
    to use VC-API, OpenId4VP, OAuth2, or GNAP, as appropriate)
-4. Proof of Possession / authorization invocation: [HTTP Signatures (Cavage
-   draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
+4. Proof of Possession / authorization invocation: HTTP Signatures.
+   MUST - [RFC 9421 HTTP Message Signatures](https://www.rfc-editor.org/rfc/rfc9421.html),
+   MAY - [HTTP Signatures (Cavage draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
 5. Access Control / Policy language data model: TBD
 
 ### Space `controller` and the Root of Trust
