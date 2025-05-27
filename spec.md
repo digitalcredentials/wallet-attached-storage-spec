@@ -328,7 +328,7 @@ Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTF
 HTTP/1.1 200 OK
 Content-type: application/json; profile="was authz profile v0.1"
 
-{ publicRead: true }
+{ "type": "PublicCanRead" }
 ```
 
 ## Spaces
