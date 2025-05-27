@@ -309,7 +309,7 @@ Content-type: application/linkset+json
       "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
       "acl": [
         "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
-        "media": "application/json; profile=\"was authz profile v0.1\""
+        "media": "application/json"
       ]
     }
   ]
@@ -326,7 +326,7 @@ Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTF
 
 ```http
 HTTP/1.1 200 OK
-Content-type: application/json; profile="was authz profile v0.1"
+Content-type: application/json
 
 { "type": "PublicCanRead" }
 ```
