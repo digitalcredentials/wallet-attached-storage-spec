@@ -215,7 +215,7 @@ To that end, the profile offers the following layered mechanisms.
 3. **Advanced Delegatable Capabilities** ("anyone with the link..." style):
    Use zCaps [Authorization Capabilities v0.3](https://w3c-ccg.github.io/zcap-spec/)
 4. **Policy Based Access Control** (including the familiar "share with this list
-   of people or groups" style): Use the space's `link` property to point to
+   of people or groups" style): Use the space's `linkset` property to point to
    a linkset that includes a URL to an access control policy document.
 
 ### Authorization Specification Dependencies at a Glance
@@ -266,7 +266,7 @@ all the way to the space controller, by one of the following:
 1. Direct: Provide a root capability invoked directly by the controller, or
 2. Delegated: Invoke a capability delegated to some other agent by the controller, or
 3. Matching Policy: (if using any kind of access control policy mechanism) Match
-   an authorization policy specified in the `link` property of the space. This
+   an authorization policy specified in the `linkset` property of the space. This
    resource is related to the space controller because initially, it can only be
    modified either by the controller or an authorized party delegated to by the
    controller.
@@ -286,7 +286,7 @@ This can be done in one of two ways:
 
 ### Specifying Access Policy With Space Link Sets
 
-To set access control policy for a space, use the `link` property.
+To set access control policy for a space, use the `linkset` property.
 
 Example (fetching a space's link set):
 
@@ -344,7 +344,7 @@ Content-type: application/json
 * `controller` - A cryptographic identifier (a [DID](https://www.w3.org/TR/did-1.0/)) 
   of the entity that is authorized to perform operations on the space (or to
   delegate authorization to other entities)
-* `link` (optional) - A URL (relative or absolute) to a resource which contains
+* `linkset` (optional) - A URL (relative or absolute) to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
   documents)
 
@@ -446,7 +446,7 @@ Content-type: application/json
   "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "link": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/links"
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/links"
 }
 ```
 
@@ -499,7 +499,7 @@ Example error response (missing authorization):
 * Allows to update the following fields:
   - `name`
   - `controller`
-  - `link`
+  - `linkset`
 
 #### (HTTP API) PUT `/space/{space_id}`
 
@@ -509,7 +509,7 @@ may be omitted from the request payload.
 
 Note that this operation is idempotent.
 
-Example request (updating the `name` and `link` properties of a space):
+Example request (updating the `name` and `linkset` properties of a space):
 
 ```http
 PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
@@ -522,7 +522,7 @@ Authorization: ...
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
   "name": "Newly renamed space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "link": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/links"
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/links"
 }
 ```
 
