@@ -291,7 +291,7 @@ To set access control policy for a space, use the `linkset` property.
 Example (fetching a space's link set):
 
 ```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/links HTTP/1.1
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset HTTP/1.1
 Host: example.com
 Accept: application/linkset+json
 Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
@@ -446,7 +446,7 @@ Content-type: application/json
   "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/links"
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset"
 }
 ```
 
@@ -522,7 +522,7 @@ Authorization: ...
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
   "name": "Newly renamed space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/links"
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset"
 }
 ```
 
