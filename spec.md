@@ -423,6 +423,9 @@ Example error response (a space with the specified `id` already exists):
 * Requires appropriate authorization (root zcap invoked by the space's controller,
   or a zcap granting permission to read a particular space)
 * Returns the details for the specified space `id`
+* Only includes the resources the requester is authorized to see
+
+The format of the response is determined based on content negotiation.
 
 #### (HTTP API) GET `/space/{space_id}`
 
@@ -435,7 +438,7 @@ Accept: application/json
 Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
 ```
 
-Example success response:
+Example success response (the space is empty of contents):
 
 ```http
 HTTP/1.1 200 OK
@@ -446,13 +449,64 @@ Content-type: application/json
   "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset"
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset",
+  "totalItems": 0
 }
 ```
 
+Example success response (resources have been added to the space):
+
+* Contents listed in a format inspired by [ActivityStreams 2](https://www.w3.org/TR/activitystreams-core/#collections)
+  Collections
+* No pagination used
+* The requester is authorized to see two of these items
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "type": ["Space"],
+  "name": "Example space #1",
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset",
+  "totalItems": 2,
+  "items": [
+    { "id": "https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/10f6672d-7a24-486b-9622-691007ded846" },
+    { "id": "https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/b42ec4d8-6ead-486d-b70a-c25d2ce4dfc7" }
+  ]
+}
+```
+
+#### Read Space Errors
+
 Example error response (missing or insufficient authorization):
 
+A server MUST return the same error response in the case of missing or insufficient
+authorization as it would for a missing/not found space.
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+Content-Language: en
+{
+  "type": "https://wallet.storage/spec#read-space-errors",
+  "title": "Space not found or insufficient authorization."
+}
+```
+
 Example error response (space id not found):
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+Content-Language: en
+{
+  "type": "https://wallet.storage/spec#read-space-errors",
+  "title": "Space not found or insufficient authorization."
+}
+```
 
 ### List Spaces Operation
 
