@@ -619,6 +619,8 @@ may be omitted from the request payload.
 
 Note that this operation is idempotent.
 
+* A `controller` property is required in the PUT request body.
+
 Example request (updating the `name` and `linkset` properties of a space):
 
 ```http
