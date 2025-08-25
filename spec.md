@@ -512,7 +512,7 @@ Content-type: application/json
 Example success response (resources have been added to the space):
 
 * Contents listed in a format inspired by [ActivityStreams 2](https://www.w3.org/TR/activitystreams-core/#collections)
-  Collections
+  (AS2) Collections
 * No pagination used
 * The requester is authorized to see two of these items
 
@@ -696,21 +696,30 @@ collection is automatically created within that Space.
 
 Collection properties:
 
+* `id`
 * `type` - A sorted array of strings, MUST include the type `Collection`.
-* Links to any metadata objects controlled by the Wallet Attached Storage server
-* Links to any metadata objects modifiable by the collection's controller
+* `name` (optional) - An arbitrary human-readable name for the collection. Does not
+  have to be unique.
+* `linkset` (optional) - A URL (relative or absolute) to a resource which contains
+  a set of links to auxiliary resources (such as to access control policy
+  documents)
 
 #### Collection JSON Representation (Activity Streams 2 profile)
 
 Example empty collection, in AS2 format:
 
-```js
+```json
 {
+  "id": "73WakrfVbNJBaAmhQtEeDv",
+  "name": "Verifiable Credentials Collection",
   "type": ["Collection"],
   "totalItems": 0,
   "items": []
 }
 ```
+
+Note that the `totalItems` and `items` properties are specific to the AS2 representation,
+and are not directly editable by the user (are instead controlled by the server).
 
 ### Create or Update Collection operation
 
@@ -719,7 +728,7 @@ Example empty collection, in AS2 format:
 ```http
 PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
 Host: example.com
-Content-Type: application/json
+Content-Type: application/activity+json
 Authorization: ...
 
 {
@@ -739,12 +748,12 @@ HTTP/1.1 201 Created
 
 #### (HTTP API) GET `/space/{space_id}/{collection_id}/`
 
-Example request (getting a collection by its id):
+Example request (getting a collection by its id), in ActivityStreams 2 format:
 
 ```http
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
 Host: example.com
-Accept: application/json
+Accept: application/activity+json
 Authorization: ...
 ```
 
@@ -752,7 +761,7 @@ Example response:
 
 ```http
 HTTP/1.1 200 OK
-Content-type: application/json
+Content-type: application/activity+json
 
 {
   "id": "73WakrfVbNJBaAmhQtEeDv",
@@ -766,6 +775,20 @@ Content-type: application/json
 ### Delete Collection operation
 
 #### (HTTP API) DELETE `/space/{space_id}/{collection_id}/`
+
+Example request (no request body):
+
+```http
+DELETE /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
+Host: example.com
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 204 No Content
+```
 
 ## Resources and Blobs
 
