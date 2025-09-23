@@ -494,7 +494,7 @@ Accept: application/json
 Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
 ```
 
-Example success response (the space is empty of contents):
+Example success response:
 
 ```http
 HTTP/1.1 200 OK
@@ -505,33 +505,7 @@ Content-type: application/json
   "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset",
-  "totalItems": 0
-}
-```
-
-Example success response (resources have been added to the space):
-
-* Contents listed in a format inspired by [ActivityStreams 2](https://www.w3.org/TR/activitystreams-core/#collections)
-  (AS2) Collections
-* No pagination used
-* The requester is authorized to see two of these items
-
-```http
-HTTP/1.1 200 OK
-Content-type: application/json
-
-{
-  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
-  "type": ["Space"],
-  "name": "Example space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset",
-  "totalItems": 2,
-  "items": [
-    { "id": "https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/10f6672d-7a24-486b-9622-691007ded846" },
-    { "id": "https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/b42ec4d8-6ead-486d-b70a-c25d2ce4dfc7" }
-  ]
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset"
 }
 ```
 
@@ -545,7 +519,7 @@ authorization as it would for a missing/not found space.
 ```http
 HTTP/1.1 404 Not Found
 Content-type: application/problem+json
-Content-Language: en
+
 {
   "type": "https://wallet.storage/spec#read-space-errors",
   "title": "Space not found or insufficient authorization."
@@ -557,7 +531,7 @@ Example error response (space id not found):
 ```http
 HTTP/1.1 404 Not Found
 Content-type: application/problem+json
-Content-Language: en
+
 {
   "type": "https://wallet.storage/spec#read-space-errors",
   "title": "Space not found or insufficient authorization."
@@ -709,7 +683,7 @@ Collection properties:
 
 #### Collection JSON Representation (Activity Streams 2 profile)
 
-Example empty collection, in AS2 format:
+Example empty collection:
 
 ```json
 {
@@ -721,8 +695,8 @@ Example empty collection, in AS2 format:
 }
 ```
 
-Note that the `totalItems` and `items` properties are specific to the AS2 representation,
-and are not directly editable by the user (are instead controlled by the server).
+Note that the `totalItems` and `items` properties are not directly editable by
+the user (are instead controlled by the server).
 
 ### Create or Update Collection operation
 
@@ -731,7 +705,7 @@ and are not directly editable by the user (are instead controlled by the server)
 ```http
 PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
 Host: example.com
-Content-Type: application/activity+json
+Content-Type: application/json
 Authorization: ...
 
 {
@@ -751,12 +725,12 @@ HTTP/1.1 201 Created
 
 #### (HTTP API) GET `/space/{space_id}/{collection_id}/`
 
-Example request (getting a collection by its id), in ActivityStreams 2 format:
+Example request (getting a collection by its id):
 
 ```http
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
 Host: example.com
-Accept: application/activity+json
+Accept: application/json
 Authorization: ...
 ```
 
@@ -764,7 +738,7 @@ Example response:
 
 ```http
 HTTP/1.1 200 OK
-Content-type: application/activity+json
+Content-type: application/json
 
 {
   "id": "73WakrfVbNJBaAmhQtEeDv",
