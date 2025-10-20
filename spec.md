@@ -147,10 +147,8 @@ All cryptography has a half-life.
   "hardcode" any given algorithm (although it can recommend current best 
   practices)
 
-* Implementations of this spec need to be usable in government and enterprise
-  environments, which means all of the spec requirements must be able to be
-  fulfilled using legislation-approved (for example, FIPS-compliant) in most
-  jurisdictions
+* Implementations of this spec need to be usable with FIPS-compliant 
+  cryptographic algorithms
 
 ### Anti-Goals
 
