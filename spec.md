@@ -492,7 +492,7 @@ HTTP/1.1 200 OK
 Content-type: application/json
 
 {
-  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "id": "81246131-69a4  -45ab-9bff-9c946b59cf2e",
   "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
@@ -710,16 +710,16 @@ Authorization: ...
 HTTP/1.1 201 Created
 ```
 
-### Get Collection operation
+### Get Collection Description operation
 
-* Returns the collection metadata and item contents
+* Returns the Collection description object
 
-#### (HTTP API) GET `/space/{space_id}/{collection_id}/`
+#### (HTTP API) GET `/space/{space_id}/{collection_id}`
 
-Example request (getting a collection by its id):
+Example request (note: no trailing slash):
 
 ```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv HTTP/1.1
 Host: example.com
 Accept: application/json
 Authorization: ...
@@ -735,8 +735,38 @@ Content-type: application/json
   "id": "73WakrfVbNJBaAmhQtEeDv",
   "name": "Verifiable Credentials Collection",
   "type": ["Collection"],
-  "totalItems": 0,
-  "items": []
+  "totalItems": 0
+}
+```
+
+### List Collection operation
+
+* Returns the list of Collection resources
+
+#### (HTTP API) GET `/space/{space_id}/{collection_id}/`
+
+Example request (note the trailing slash):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Example response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "offset": 0,
+  "total_rows": 2,
+  "rows": [
+    { "id": "321efd4e-23cb-497c-aaee-7bd26e66d39e" },
+    { "id": "3943c87f-b617-44bc-ba75-8de2b16c3640" }
+  ]
 }
 ```
 
