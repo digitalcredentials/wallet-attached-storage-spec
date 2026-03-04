@@ -63,7 +63,7 @@ primary use cases of this specification.
 
 * The spec needs to support (though not require) end-to-end client side 
   encryption of the space. For plausible deniability, this might need to include
-  all all data (even marked as public-readable) is encrypted at rest
+  all data (even marked as public-readable) is encrypted at rest
 
 ### Replication to user-controlled local and cloud servers
 
@@ -95,7 +95,7 @@ server side, desktop, and mobile apps and services.
 
 Data written to storage spaces using this specification needs to be portable:
 
-* Authorized agents need to be able to export or backup all of the data written,
+* Authorized agents need to be able to export or backup all the data written,
   including all corresponding metadata and permissions
 
 * The sharing and storage system needs to be able to support web domain 
