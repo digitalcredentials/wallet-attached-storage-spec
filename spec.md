@@ -851,11 +851,36 @@ Resource properties:
 * Links to any metadata objects controlled by the Wallet Attached Storage server
 * Links to any metadata objects modifiable by the resource's controller
 
+### Create Resource (Add Resource to Collection) Operation
+
+#### (HTTP API) POST `/spaces/{space_id}/{collection_id}/`
+
+Example request (adds a JSON object to the `messages` collection).
+Note that since no Resource id was specified, the server auto-generated an id
+and returned it as part of the `Location` response header.
+
+```http
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/ HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Authorization: ...
+
+{"message":"hi"}
+```
+
+Example success response:
+
+```http
+HTTP/1.1 201 Created
+Content-type: application/json
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/6b5be748-5f39-4936-a895-409e393c399c
+```
+
 ### Read Resource Operation
 
 * TODO: Add language on content negotiation
 
-#### (HTTP API) GET `/spaces/{space_id}/{collection/*}{resource_name}`
+#### (HTTP API) GET `/spaces/{space_id}/{collection_id}/{resource_name}`
 
 * Requires appropriate authorization
   - For example, when using [zCAPs](#zcap) for authorization, the request
@@ -899,6 +924,7 @@ Example request to update a resource via PUT to the `messages` collection:
 PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world HTTP/1.1
 Host: example.com
 Content-Type: application/json
+Authorization: ...
 
 {"message":"hi"}
 ```
@@ -935,6 +961,7 @@ Example request to delete a resource via DELETE:
 ```http
 DELETE /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world HTTP/1.1
 Host: example.com
+Authorization: ...
 ```
 
 Example success response:
