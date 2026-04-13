@@ -1,7 +1,7 @@
 ## Introduction
 
 The Wallet Attached Storage (WAS) specification brings together the lessons
-learned from numerous attempts to standardize permissioned cloud storage over
+learned from many attempts to standardize permissioned cloud storage over
 the years.
 
 Initial use cases that are motivating this work:
@@ -15,11 +15,12 @@ Initial use cases that are motivating this work:
 
 This specification aims to provide:
 
-* A set of design constraints, goals and requirements for WAS
+* A set of design constraints, goals, and requirements for WAS
 * An HTTP API for reading and writing to permissioned cloud storage, to serve
   as a unifying interface for file and folder storage, object and bucket storage,
-  as well as databases (including RDBMSs, document stores, graph stores, etc)
-* An authorization and authentication profile for use with this storage
+  as well as databases (including RDBMSs, document stores, graph stores, etc).
+  (Note that this does not preclude bindings for other protocols in future versions.)
+* An authorization profile for use with this storage
 
 ## Goals and Requirements
 
@@ -34,29 +35,28 @@ writing to) storage spaces without being connected to the internet.
 ### Storage and sharing of public, permissioned, and private encrypted data
 
 Although the local-first offline functionality is necessary, writing data to
-stable internet-accessible URIs for the purposes of sharing them is one of the
+stable internet-accessible URLs for the purposes of sharing them is one of the
 primary use cases of this specification.
 
 * A user needs to be able to write data (that is intended to be world-readable)
-  to a cloud-accessible URI, and be able to send that URI to intended recipients
-  via any out of band mechanism such as email, chat, and so on.
+  to a cloud-accessible URL, and be able to send that URL to intended recipients
+  via any out-of-band mechanism such as email, chat, and so on.
 
 * User needs to be able to change or revoke permissions at any point after
-  sharing. Note that changed permissions apply only to subsequent operations
-  (this spec is not intended to solve the general problem of DRM).
+  sharing. Note that changed permissions apply only to operations that come after
+  the change (this spec is not intended to solve the general problem of DRM).
 
 * The sharing and permission system needs to be primarily based on authorization
-  capabilities (zcaps), but it needs to also support storage-side access control
-  list or similar functionality (even if only as a way for an authorized client
-  to receive an appropriate zcap)
+  capabilities (zcaps). It also needs support storage-side authorization policies
+  (even if only as a way for an authorized client to receive an appropriate zcap)
 
 * The sharing mechanism needs to be flexible and granular. For example, a given
   data resource needs to be: world-readable, or readable by groups or categories,
   or by only those possessing the required authorization capabilities, or by 
-  noone except the author or controller, etc
+  no one except the author or controller, etc
 
-* Advanced sharing conditions are also desireable (such as "this share expires
-  after X amount of time" or "this is a one-time share, and will expire after
+* Advanced sharing conditions are also desirable (such as "this share expires
+  after X amount of time" or "this is a one-time share and will expire after
   the first successful read request")
 
 ### Stored data is opaque to the storage provider
@@ -69,13 +69,13 @@ primary use cases of this specification.
 
 * Replication reconciles the first two requirements (data reads and writes must
   be offline-capable, but the data must eventually be able to be shared on the
-  web via traditional URIs)
+  web via traditional URLs)
 
 * Replication also provides critical availability and disaster recovery 
   functionality
 
-* Replication needs to be multi-primary (to reflect the multi-device and multi-
-  client user environment)
+* Replication needs to be multi-primary (to reflect the multi-device and
+  multi-client user environment)
 
 * Multi-primary replication requires support for a versioning or conflict
   resolution mechanism
@@ -83,8 +83,8 @@ primary use cases of this specification.
 * Data, metadata, and permissions all need to be replicated
 
 * Authorship and data provenance (the ability to tell which user or service
-  created or edited a given set of data) must work in this permissioned multi-
-  primary write environment
+  created or edited a given set of data) must work in this permissioned
+  multi-primary-write environment
 
 ### Serve as a General Purpose application storage backend
 
@@ -100,29 +100,29 @@ Data written to storage spaces using this specification needs to be portable:
 
 * The sharing and storage system needs to be able to support web domain 
   independent identifiers. That is, a user must be able to share data at a given
-  URI, then be able to migrate to a different storage service provider 
+  URL, then be able to migrate to a different storage service provider 
   (potentially operating on a different web domain than the previous one), and
   the shared permissions to that data must not break after service migration
 
-* While portability (and the not breaking of URIs) is relatively easy to achieve
+* While portability (and the not breaking of URLs) is relatively easy to achieve
   via redirect mechanisms (such as HTTP 301 and 302 redirect codes), this 
-  requires the previous service provider to be alive, available and cooperative.
-  However, this is true only of public-readable URIs, and the moment permissions
-  are involved, cross-domain redirects become very difficult.
+  requires the previous service provider to be alive, available, and cooperative.
+  However, this is true only of public-readable URLs, and the moment permissions
+  are involved, cross-domain redirects become almost impossible to implement.
   In addition, portability from "dead servers" is also required. That is, if a
-  cloud based service provider disappears (or is otherwise unavailable), but a
+   cloud-based service provider disappears (or is otherwise unavailable), but a
   user still has a backup/export available, they should be able to set up another
   storage server (on another web domain or network address), and import/restore
-  the data from backup, without shares and permissions breaking (agents that
+  the data from backup, without shares and permissions breaking. Agents that
   the data was previously shared with must still be able to find the data at
-  the new storage server location, and their permissions must still work) 
+  the new storage server location, and their permissions must still work. 
 
 ### A Plurality of Data Formats and Protocols
 
 * Spec needs to support the storage of any kind of data -- binary files and
   objects, structured documents such as JSON or CBOR, contents of relational
   database tables, graphs, and anything else, all using the same unified metadata,
-  sharing and permission mechanisms.
+  sharing, and permission mechanisms.
 
 * Storage-side schema enforcement is available but not required.
 
@@ -131,8 +131,8 @@ Data written to storage spaces using this specification needs to be portable:
 
 ### Permissioned Query and Search functionality
 
-* Where appropriate (such as for unstructured text, structured documents, RDBMs
-etc), storage needs to be queryable or searchable
+* Where appropriate (such as for unstructured text, structured documents, RDBMSs
+  etc), storage needs to be queryable or searchable
 
 * Any query/search mechanism needs to work well with the sharing/permission and
   replication requirements
@@ -208,8 +208,8 @@ To that end, the profile offers the following layered mechanisms.
    DID directly to sign API calls with HTTP Signatures.
 2. **Public Read**: For the common "public read" use case (the typical web
    publishing workflow, where a site or a file is shared for anyone to access
-   via an HTTP GET), use the simple `publicRead: true` WAS Authorization syntax,
-   see below.
+   via an HTTP GET), use the simple `{ "type": "PublicCanRead" }` WAS
+   Authorization syntax, see below.
 3. **Advanced Delegatable Capabilities** ("anyone with the link..." style):
    Use zCaps [Authorization Capabilities v0.3](https://w3c-ccg.github.io/zcap-spec/)
 4. **Policy Based Access Control** (including the familiar "share with this list
@@ -254,9 +254,9 @@ as the space `controller`.
 
 When a space is created via an HTTP [POST](#http-api-post-spaces) or
 [PUT](#http-api-put-space-space_id) operation, the controller for that space
-is set explicitly -- a client specifies the `controller` as part of the payload
-of the PUT or POST create space request, and the server MUST check that the methods
-(key IDs) used in the headers are authorized in the `capabilityInvocation`
+is set explicitly. That is, a client specifies the `controller` as part of the
+payload of the PUT or POST create space request, and the server MUST check that
+the methods(key IDs) used in the headers are authorized in the `capabilityInvocation`
 section of the `controller`'s DID document.
 
 See below in the [HTTP POST](#http-api-post-spaces) sections for examples of
@@ -343,7 +343,7 @@ Content-type: application/json
 
 To create a Space:
 
-* Perform an authenticated Create Space operation that includes a Proof of
+* Perform an authorized Create Space operation that includes a Proof of
   (cryptographic material) Possession via a mechanism such as HTTP Signatures.
 
 * If an `id` is provided in the Create Space request, it must start with `urn:uuid`.
@@ -365,6 +365,9 @@ To create a Space:
   - a proof of membership in an organization
 
 #### (HTTP API) POST `/spaces/`
+
+Note the plural `spaces` -- this is intentional, and has to do with implicit
+zCap attenuation rules.
 
 To create a space via HTTP API:
 
@@ -538,6 +541,9 @@ Content-type: application/problem+json
 
 #### (HTTP API) GET `/spaces/`
 
+Note the plural `spaces` -- this is intentional, and has to do with implicit
+zCap attenuation rules.
+
 Example request:
 
 ```http
@@ -571,7 +577,7 @@ Example error response (missing authorization):
 
 * Requires appropriate authorization (root zcap invoked by the space's
   controller, or a zcap granting permission to write to a particular space)
-* Allows to update the following fields:
+* Allows the client to update the following fields:
   - `name`
   - `controller`
   - `linkset`
@@ -620,7 +626,7 @@ the space `id`):
 
 * Requires appropriate authorization (root zcap invoked by the space's
   controller, or a zcap granting permission to write to a particular space)
-* Deletes the space and all of the data (collections and resources) contained
+* Deletes the space and all the data (collections and resources) contained
   in it
 * This operation is idempotent
 
@@ -640,9 +646,6 @@ Example success response:
 ```http
 HTTP/1.1 204 No Content
 ```
-
-TODO: Decide whether subsequent GET requests to the same space should result in
-a 410 Gone, or the usual 404.
 
 Example error response (missing or invalid authorization):
 
@@ -672,7 +675,7 @@ Collection properties:
   a set of links to auxiliary resources (such as to access control policy
   documents)
 
-#### Collection JSON Representation (Activity Streams 2 profile)
+#### Collection JSON Representation
 
 Example empty collection:
 
@@ -680,14 +683,9 @@ Example empty collection:
 {
   "id": "73WakrfVbNJBaAmhQtEeDv",
   "name": "Verifiable Credentials Collection",
-  "type": ["Collection"],
-  "totalItems": 0,
-  "items": []
+  "type": ["Collection"]
 }
 ```
-
-Note that the `totalItems` and `items` properties are not directly editable by
-the user (are instead controlled by the server).
 
 ### Create Collection (Add Collection to a Space) operation
 
@@ -822,7 +820,7 @@ HTTP/1.1 204 No Content
 ### Blob Data Model
 
 A unit of data, in transit or at rest.
-(As described in the [W3c FileAPI: Blob Interface](https://w3c.github.io/FileAPI/#blob-section)).
+(As described in the [W3C FileAPI: Blob Interface](https://w3c.github.io/FileAPI/#blob-section)).
 
 Blob properties:
 
@@ -853,8 +851,10 @@ Resource properties:
 
 ### Create Resource (Add Resource to Collection) Operation
 
-#### (HTTP API) POST `/spaces/{space_id}/{collection_id}/`
+#### (HTTP API) POST `/space/{space_id}/{collection_id}/`
 
+Note the plural `spaces` -- this is intentional, and has to do with implicit
+zCap attenuation rules.
 Example request (adds a JSON object to the `messages` collection).
 Note that since no Resource id was specified, the server auto-generated an id
 and returned it as part of the `Location` response header.
@@ -880,7 +880,7 @@ Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/6b5be74
 
 * TODO: Add language on content negotiation
 
-#### (HTTP API) GET `/spaces/{space_id}/{collection_id}/{resource_name}`
+#### (HTTP API) GET `/space/{space_id}/{collection_id}/{resource_name}`
 
 * Requires appropriate authorization
   - For example, when using [zCAPs](#zcap) for authorization, the request
@@ -909,7 +909,7 @@ Content-type: application/json
 
 ### Update Resource Operation
 
-#### (HTTP API) PUT `/spaces/{space_id}/{collection/*}{resource_name}`
+#### (HTTP API) PUT `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
   - For example, when using [zCAPs](#zcap) for authorization, the request
@@ -935,14 +935,14 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-* TODO: Add example 404 error response where a missing or invalid space or
+* TODO: Add an example 404 error response where a missing or invalid space or
   collection is specified, or if the request carries insufficient or missing
   authorization
 * TODO: Add example "over storage quota" error response
 
 ### Delete Resource Operation
 
-#### (HTTP API) DELETE `/spaces/{space_id}/{collection/*}{resource_name}`
+#### (HTTP API) DELETE `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
   - For example, when using [zCAPs](#zcap) for authorization, the request
@@ -970,7 +970,7 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-* TODO: Add example 404 error response if the request carries insufficient or
+* TODO: Add an example 404 error response if the request carries insufficient or
   missing authorization
 
 ## Security and Privacy Considerations
