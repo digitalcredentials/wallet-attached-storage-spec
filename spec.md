@@ -760,8 +760,7 @@ Content-type: application/json
 {
   "id": "73WakrfVbNJBaAmhQtEeDv",
   "name": "Verifiable Credentials Collection",
-  "type": ["Collection"],
-  "totalItems": 0
+  "type": ["Collection"]
 }
 ```
 
@@ -790,8 +789,16 @@ Content-type: application/json
   "offset": 0,
   "total_rows": 2,
   "rows": [
-    { "id": "321efd4e-23cb-497c-aaee-7bd26e66d39e" },
-    { "id": "3943c87f-b617-44bc-ba75-8de2b16c3640" }
+    {
+      "id": "321efd4e-23cb-497c-aaee-7bd26e66d39e",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/321efd4e-23cb-497c-aaee-7bd26e66d39e",
+      "contentType": "application/json" 
+    },
+    {
+      "id": "3943c87f-b617-44bc-ba75-8de2b16c3640",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/3943c87f-b617-44bc-ba75-8de2b16c3640",
+      "contentType": "application/json" 
+    }
   ]
 }
 ```
