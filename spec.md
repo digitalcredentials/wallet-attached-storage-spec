@@ -100,10 +100,7 @@ To create a Space:
 
 #### (HTTP API) POST `/spaces/`
 
-Note the plural `spaces` -- this is intentional, and has to do with implicit
-zCap attenuation rules.
-
-To create a space via HTTP API:
+To create a space via HTTP API using the Spaces Repository POST API:
 
 ```http
 POST /spaces/ HTTP/1.1
@@ -210,9 +207,6 @@ Example error response (a space with the specified `id` already exists):
 * Lists only the spaces the requester is authorized to see
 
 #### (HTTP API) GET `/spaces/`
-
-Note the plural `spaces` -- this is intentional, and has to do with implicit
-zCap attenuation rules.
 
 Example request:
 
@@ -324,7 +318,10 @@ Content-type: application/problem+json
 }
 ```
 
-### Update Space operation
+### Update (or Created by Id) Space operation
+
+When creating or modifying a Space via PUT, the client specifies the `id`
+of the Space.
 
 * Requires appropriate authorization (root zcap invoked by the space's
   controller, or a zcap granting permission to write to a particular space)
@@ -341,7 +338,39 @@ may be omitted from the request payload.
 
 Note that this operation is idempotent.
 
-* A `controller` property is required in the PUT request body.
+* When creating a space via PUT, a `controller` property is required in the PUT request body.
+
+Example request (creating a new space via PUT), note the lack of trailing slash:
+
+```http
+PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
+Host: example.com
+Accept: application/json
+Content-type: application/json
+Authorization: ...
+
+{
+  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "type": ["Space"],
+  "name": "Example space #1",
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+}
+```
+
+Example success response:
+
+```http
+HTTP/1.1 201 Created
+Content-type: application/json
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e
+
+{
+  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "type": ["Space"],
+  "name": "Example space #1",
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+}
+```
 
 Example request (updating the `name` and `linkset` properties of a space):
 
