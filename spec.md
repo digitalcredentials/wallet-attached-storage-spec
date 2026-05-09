@@ -28,6 +28,15 @@ This specification aims to provide:
 ## Terminology
 
 <dl class="termlist definitions" data-sort="ascending">
+  <dt><dfn data-lt="controllers">controller</dfn></dt>
+  <dd>An entity that has the capability to make changes to a given object.</dd>
+
+  <dt><dfn data-lt="did|dids">decentralized identifier (DID)</dfn></dt>
+  <dd>See [[DID-CORE]].</dd>
+
+  <dt><dfn data-lt="server|servers|instance|instances">instance, server</dfn></dt>
+  <dd>A deployed instance of an application or service that implements this
+    specification's API.</dd>
 </dl>
 
 ## Authorization
@@ -63,11 +72,11 @@ default profile.
 
 `Space` properties:
 
-* `id` - Deterministically set by server if not provided.
+* `id` - Deterministically set by the [=server=] if not provided.
 * `type` - A sorted array of strings, MUST include the type `Space`.
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
-* `controller` - A cryptographic identifier (a [DID](https://www.w3.org/TR/did-1.0/)) 
+* `controller` - A cryptographic identifier (a [=did=]) 
   of the entity that is authorized to perform operations on the space (or to
   delegate authorization to other entities)
 * `linkset` (optional) - A URL (relative or absolute) to a resource which contains
