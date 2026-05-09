@@ -8,9 +8,11 @@ Initial use cases that are motivating this work:
 
 * Sharing of W3C Verifiable Credentials from mobile credential wallets, as well
   as document sharing in general
+* Serving as standardized storage (and a point of sync and interop) for 
+  multiple Verifiable Credential wallets.
+* Providing data storage and authorization frameworks for Agentic AI
 * Enabling data portability and service provider interoperability for
   user-controlled social networking
-* Providing data storage and authorization frameworks for Agentic AI
 * Enabling the "bring your own storage" architecture pattern of web app development
 
 This specification aims to provide:
@@ -88,8 +90,9 @@ primary use cases of this specification.
 
 ### Serve as a General Purpose application storage backend
 
-Intended to serve as storage backend to client-side (Single Page Applications),
-server side, desktop, and mobile apps and services.
+Intended to serve as a storage backend for credential wallets, and any other
+client-side (Single Page Applications), server side, desktop, and mobile apps 
+and services.
 
 ### Data Portability
 
@@ -119,10 +122,10 @@ Data written to storage spaces using this specification needs to be portable:
 
 ### A Plurality of Data Formats and Protocols
 
-* Spec needs to support the storage of any kind of data -- binary files and
+* Spec needs to support the storage of data in any format -- binary files and
   objects, structured documents such as JSON or CBOR, contents of relational
-  database tables, graphs, and anything else, all using the same unified metadata,
-  sharing, and permission mechanisms.
+  database tables, graphs, and anything else, all using the same unified 
+  metadata, sharing, and permission mechanisms.
 
 * Storage-side schema enforcement is available but not required.
 
@@ -159,7 +162,7 @@ This storage specification is intentionally positioned to not be used in
 and replication nodes while solely relying on encryption as the authorization
 mechanism.
 
-To put it a different way -- all encryption has an unpredictable half life, and
+To put it a different way -- all encryption has an unpredictable half-life, and
 some use cases do not permit relying on encryption only for access control.
 Instead, a _combination_ of encryption and authorization enforcement by
 minimally trusted storage servers is required.
