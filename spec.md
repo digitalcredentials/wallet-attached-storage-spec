@@ -10,10 +10,10 @@ Initial use cases that are motivating this work:
   as document sharing in general
 * Serving as standardized storage (and a point of sync and interop) for 
   multiple Verifiable Credential wallets.
-* Providing data storage and authorization frameworks for Agentic AI
 * Enabling data portability and service provider interoperability for
   user-controlled social networking
 * Enabling the "bring your own storage" architecture pattern of web app development
+* Providing data storage and authorization frameworks for Agentic AI
 
 This specification aims to provide:
 
@@ -658,9 +658,9 @@ Example error response (invalid `id` provided):
 A collection is a namespace for Resources, and a unit of configuration, within
 a space.
 
-In other storage systems, a collection is also known as: Directory, Folder,
-RDBMS Table, Document Collection, Graph, WebAPI FileList, Bucket, Solid
-Container, EDV Vault, DWN Collection, and so on.
+In other storage systems, the concept of collections has many different names.
+For example, _Directory, Folder, RDBMS Table, Document Collection, Graph, WebAPI
+FileList, Bucket, LDP Basic Container, EDV Vault_, and so on.
 
 The use of collections is optional -- when a Space is created, the default
 collection is automatically created within that Space.
@@ -671,6 +671,8 @@ Collection properties:
 
 * `id`
 * `type` - A sorted array of strings, MUST include the type `Collection`.
+* `url` (optional) - A URL (relative or absolute) to the collection's description
+  resource.
 * `name` (optional) - An arbitrary human-readable name for the collection. Does not
   have to be unique.
 * `linkset` (optional) - A URL (relative or absolute) to a resource which contains
@@ -789,17 +791,20 @@ HTTP/1.1 200 OK
 Content-type: application/json
 
 {
-  "offset": 0,
-  "total_rows": 2,
-  "rows": [
+  "id": "73WakrfVbNJBaAmhQtEeDv",
+  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
+  "name": "Example JSON Documents Collection",
+  "type": ["Collection"],
+  "totalItems": 2,
+  "items": [
     {
       "id": "321efd4e-23cb-497c-aaee-7bd26e66d39e",
-      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/321efd4e-23cb-497c-aaee-7bd26e66d39e",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/321efd4e-23cb-497c-aaee-7bd26e66d39e",
       "contentType": "application/json" 
     },
     {
       "id": "3943c87f-b617-44bc-ba75-8de2b16c3640",
-      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/3943c87f-b617-44bc-ba75-8de2b16c3640",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/3943c87f-b617-44bc-ba75-8de2b16c3640",
       "contentType": "application/json" 
     }
   ]
