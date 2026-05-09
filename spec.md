@@ -66,22 +66,13 @@ authorization profile.
 See **Appendix [[[#was-authorization-profile-v0-1]]]** for a description of the
 default profile.
 
-## Spaces
+## Spaces Repositories
 
-### Space Data Model
-
-`Space` properties:
-
-* `id` - Deterministically set by the [=server=] if not provided.
-* `type` - A sorted array of strings, MUST include the type `Space`.
-* `name` (optional) - An arbitrary human-readable name for the space. Does not
-  have to be unique.
-* `controller` - A cryptographic identifier (a [=did=]) 
-  of the entity that is authorized to perform operations on the space (or to
-  delegate authorization to other entities)
-* `linkset` (optional) - A URL (relative or absolute) to a resource which contains
-  a set of links to auxiliary resources (such as to access control policy
-  documents)
+A Spaces Repository is a set of API endpoints that supports the creation and
+management of multiple spaces on a given [=server=].
+This `/spaces/` set of API endpoints is optional; if a server does not support
+this feature (for example, if it is a single-tenant server with an existing 
+hardcoded Space), it need only implement the `/space/{space_id}/` endpoints.
 
 ### Create Space operation
 
@@ -94,12 +85,12 @@ To create a Space:
 
 * A `controller` DID MUST be provided in the request body, and the request must
   demonstrate proof of cryptographic control of that DID.
-    * If no `controller` is provided, the server MUST return an HTTP 400 error
-      response
-    * The signing DID (from the proof of possession signature) MUST match the
-      Space's `controller`. This is how the root of trust is initially set up
-      (see the [Space `controller` and the Root of
-      Trust](#space-controller-and-the-root-of-trust) section for more details)
+  * If no `controller` is provided, the server MUST return an HTTP 400 error
+    response
+  * The signing DID (from the proof of possession signature) MUST match the
+    Space's `controller`. This is how the root of trust is initially set up
+    (see the [Space `controller` and the Root of
+    Trust](#space-controller-and-the-root-of-trust) section for more details)
 
 * (Optional, out of scope) A given storage provider MAY impose additional
   requirements in order to create a Space for a given controller, such as:
@@ -211,6 +202,64 @@ Example error response (invalid `id` provided):
 
 Example error response (a space with the specified `id` already exists):
 
+### List Spaces Operation
+
+* Requires appropriate authorization (root zcap invoked by the controller of one
+  or more spaces, or a zcap granting permission to read a one or more spaces)
+
+* Lists only the spaces the requester is authorized to see
+
+#### (HTTP API) GET `/spaces/`
+
+Note the plural `spaces` -- this is intentional, and has to do with implicit
+zCap attenuation rules.
+
+Example request:
+
+```http
+GET /spaces/ HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Example success response (requester has read access to at least one space):
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+...
+```
+
+Example success response (requester does NOT have access to any spaces):
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+...
+```
+
+Example error response (missing authorization):
+
+## Spaces
+
+### Space Data Model
+
+`Space` properties:
+
+* `id` - Deterministically set by the [=server=] if not provided.
+* `type` - A sorted array of strings, MUST include the type `Space`.
+* `name` (optional) - An arbitrary human-readable name for the space. Does not
+  have to be unique.
+* `controller` - A cryptographic identifier (a [=did=]) 
+  of the entity that is authorized to perform operations on the space (or to
+  delegate authorization to other entities)
+* `linkset` (optional) - A URL (relative or absolute) to a resource which contains
+  a set of links to auxiliary resources (such as to access control policy
+  documents)
+
 ### Read Space operation
 
 * Requires appropriate authorization (root zcap invoked by the space's controller,
@@ -274,47 +323,6 @@ Content-type: application/problem+json
   "title": "Space not found or insufficient authorization."
 }
 ```
-
-### List Spaces Operation
-
-* Requires appropriate authorization (root zcap invoked by the controller of one
-  or more spaces, or a zcap granting permission to read a one or more spaces)
-
-* Lists only the spaces the requester is authorized to see
-
-#### (HTTP API) GET `/spaces/`
-
-Note the plural `spaces` -- this is intentional, and has to do with implicit
-zCap attenuation rules.
-
-Example request:
-
-```http
-GET /spaces/ HTTP/1.1
-Host: example.com
-Accept: application/json
-Authorization: ...
-```
-
-Example success response (requester has read access to at least one space):
-
-```http
-HTTP/1.1 200 OK
-Content-type: application/json
-
-...
-```
-
-Example success response (requester does NOT have access to any spaces):
-
-```http
-HTTP/1.1 200 OK
-Content-type: application/json
-
-...
-```
-
-Example error response (missing authorization):
 
 ### Update Space operation
 
