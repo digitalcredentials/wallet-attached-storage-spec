@@ -431,6 +431,41 @@ Example error response (missing or invalid authorization):
 
 Example error response (invalid `id` provided):
 
+### List All Collections operation
+
+* Returns the list of all Collections in a Space (that the requester has
+  permission to access)
+
+#### (HTTP API) GET `/space/{space_id}/collections`
+
+Example request (note the lack of trailing slash):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Example response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections",
+  "totalItems": 1,
+  "items": [
+    {
+      "id": "73WakrfVbNJBaAmhQtEeDv",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
+      "contentType": "application/json" 
+    }
+  ]
+}
+```
+
 ## Collections
 
 A collection is a namespace for Resources, and a unit of configuration, within
