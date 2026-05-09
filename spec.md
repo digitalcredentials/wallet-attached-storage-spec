@@ -1148,8 +1148,10 @@ Content-type: application/linkset+json
     {
       "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
       "acl": [
-        "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
-        "media": "application/json"
+        { 
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
+          "media": "application/json"
+        }
       ]
     }
   ]
