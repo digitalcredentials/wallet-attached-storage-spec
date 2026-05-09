@@ -323,7 +323,7 @@ Content-type: application/problem+json
 }
 ```
 
-### Update (or Created by Id) Space operation
+### Update (or Create by Id) Space operation
 
 When creating or modifying a Space via PUT, the client specifies the `id`
 of the Space.
@@ -368,13 +368,6 @@ Example success response:
 HTTP/1.1 201 Created
 Content-type: application/json
 Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e
-
-{
-  "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
-  "type": ["Space"],
-  "name": "Example space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
-}
 ```
 
 Example request (updating the `name` and `linkset` properties of a space):
@@ -388,6 +381,7 @@ Authorization: ...
 
 {
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+  "type": ["Space"],
   "name": "Newly renamed space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
   "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset"
@@ -478,6 +472,18 @@ a space.
 In other storage systems, the concept of collections has many different names.
 For example, _Directory, Folder, RDBMS Table, Document Collection, Graph, WebAPI
 FileList, Bucket, LDP Basic Container, EDV Vault_, and so on.
+
+Collections do not contain other collections (this specification adopts a
+flat collection structure).
+
+<div class="note">
+Rationale: Nested collections (such as those used by Solid/LDP/LWS) encode query
+relationships into URL hierarchy, which creates significant complexity
+(recursive permissions, recursive deletes, path traversal, depth-limited listing)
+and maps poorly to flat backends like RDBMS tables or S3 buckets. The use cases
+that motivate nesting (e.g., "all comments on a post") are better served by the
+`query` endpoint with field-based filtering.
+</div>
 
 ### Collection Data Model
 
@@ -614,7 +620,7 @@ Authorization: ...
 ```
 
 ```http
-HTTP/1.1 204 No Content
+HTTP/1.1 201 Created
 ```
 
 Example error request and response (invalid collection `id` from
@@ -717,12 +723,23 @@ Content-type: application/json
 
 ### Delete Collection operation
 
-#### (HTTP API) DELETE `/space/{space_id}/{collection_id}/`
+#### (HTTP API) DELETE `/space/{space_id}/{collection_id}`
 
-Example request (no request body):
+* Requires appropriate authorization
+  - For example, when using [zCAPs](#zcap) for authorization, the request
+    must either: be signed by the resource's or the space's [=controller=],
+    or invoke a delegated capability that allows the `DELETE` action.
+
+* This operation is idempotent
+
+* (Assuming the request carries appropriate authorization) Sending a DELETE
+  request to a collection that does not exist (or has already been deleted)
+  results in a 204 success response
+
+Example request (note the lack of trailing slash):
 
 ```http
-DELETE /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/ HTTP/1.1
+DELETE /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv HTTP/1.1
 Host: example.com
 Authorization: ...
 ```
@@ -798,7 +815,7 @@ Example success response:
 ```http
 HTTP/1.1 201 Created
 Content-type: application/json
-Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/6b5be748-5f39-4936-a895-409e393c399c
+Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/6b5be748-5f39-4936-a895-409e393c399c
 ```
 
 Example error request and response creating a resource (invalid `id` from
@@ -1317,7 +1334,7 @@ collections `id`s MUST NOT collide with the corresponding reserved segments.
 | `/space/{space_id}/acl`          | `acl`              | Access control policy                  |
 | `/space/{space_id}/query`        | `query`            | Reserved for cross-collection queries  |
 
-If a client attmepts to create a collection with an `id` that collides with a
+If a client attempts to create a collection with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
 
 ### Collection-level reserved endpoints
@@ -1332,7 +1349,7 @@ corresponding reserved segments.
 |-------------------------------------------|------------------|-------------------------------------|
 | `/space/{space_id}/{collection_id}/query` | `query`          | Query resources within a collection |
 
-If a client attmepts to create a resource with an `id` that collides with a
+If a client attempts to create a resource with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
 
 ### Resource-level reserved endpoints
