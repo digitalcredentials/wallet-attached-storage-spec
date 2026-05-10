@@ -122,7 +122,7 @@ implicit, controlled by the server.
 **Spaces Repository Endpoints - Manage Spaces on a Server (Optional):**
 
 If not implemented on a server, implies that any existing Spaces are
-pre-configred and controlled by the server.
+pre-configured and controlled by the server.
 
 * `POST /spaces/` - Create a new Space
 * `GET /spaces/` - List all Spaces (that the requester is authorized to see)
@@ -150,7 +150,7 @@ more specific policy, either at the Collection or Resource level).
 * `GET|PUT|DELETE /space/{space_id}/{collection_id}/acl` - CRUD on the policy object for the Collection
 * `GET|PUT|DELETE /space/{space_id}/{collection_id}/{resource_id}/acl` - CRUD on the policy object for the Resource
 
-**Linkset / Discovery Endpoints (Optional):**:**
+**Linkset / Discovery Endpoints (Optional):**
 
 Required if Space endpoints or Collection endpoints are supported.
 
@@ -189,6 +189,18 @@ To put it another way, an unauthorized client (meaning, either not carrying
 any authorization in the request itself, or possessing insufficient permissions)
 MUST NOT be able to discover the existence of a resource based on the error
 response.
+
+### Caching
+
+TODO: Add caching semantics section.
+
+* `ETag`, `If-None-Match`, `Last-Modified`, and `Cache-Control` are encouraged
+* Set "no cache" headers for non-idempotent operations
+
+### Pagination
+
+TODO: Add pagination section for 'list spaces', 'list collections', and 'list resources'
+operations.
 
 ## Terminology
 
@@ -1251,7 +1263,6 @@ Content-type: application/problem+json
 * TODO: Add an example 404 error response where a missing or invalid space or
   collection is specified, or if the request carries insufficient or missing
   authorization
-* TODO: Add example "over storage quota" error response
 
 ### Delete Resource Operation
 
