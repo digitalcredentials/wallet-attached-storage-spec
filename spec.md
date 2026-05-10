@@ -27,6 +27,56 @@ Initial use cases that are motivating this work:
 * Enabling the "bring your own storage" architecture pattern of web app development
 * Providing data storage and authorization frameworks for Agentic AI
 
+### Scope and Conformance Profiles
+
+This specification represents a layered and modular approach to storage, combining
+core features and optional extension points. 
+
+**Permissioned Key/Value CRUD**: At its core, this spec is an example of how to
+implement a permissioned key/value CRUD API using simple HTTP verbs and delegatable
+capability-based authorization. Implementers can use this layer (just sections
+[[[#resources-and-blobs]]] and [[[#was-authorization-profile-v0-1]]]), without
+needing collection or space management, for reads and writes of any resource
+(text, structured document, or binary blob).
+
+**Listing items**: Some use cases, like the famous "implement a blog with comments
+in 15 minutes" framework posts, need to list items in a container or collection
+of some kind. This spec follows a general pattern of "here are the listing endpoints,
+send a permissioned GET to one, and receive back some items":
+
+* GET `/space/{space_id}/{collection_id}/` endpoint to list items ([[[#list-collection-operation]]])
+* GET `/space/{space_id}/collections/` endpoint to list collections in a space
+  ([[[#list-all-collections-operation]]])
+* GET `/spaces/` endpoint to list spaces in a server ([[[#list-spaces-operation]]])
+
+And just as with the previous layer, some collections contain structured data,
+and some contain just binary blobs (files or objects).
+
+**Collections management**: On the next layer, clients can create and manage
+arbitrary collections for a given space. If you've ever used a GUI front end
+for a database or file system, you'll be familiar with these operations.
+(See section [[[#collections]]].)
+
+**Spaces management**: Some implementations, like cloud storage providers,
+may support multi-tenancy at the space level, adding the concept of [[[#spaces-repositories]]],
+allowing a client to create and manage multiple spaces.
+
+**Extensions**: Linksets (from [[RFC9264]]) serve as a feature detection and
+extension mechanism, supporting optional features such as:
+
+* The `acl` auxiliary resource provides a way to specify arbitrary access policies
+* User-writable metadata lets clients attach arbitrary data to resources (for
+  example, user-defined "tags" for binary files)
+* The concept of Backends as storage engines for collections
+* Query and search: some Backends support querying or search capability
+* Quota management: some Backends support quota limit enforcement
+* Client-side Encryption, using the [Encrypted Data Vaults](https://identity.foundation/edv-spec/)
+  spec as a backend
+* Replication and Sync: when supported, a client can set up multiple replicas
+  for a given collection, depending on backend support
+* Versioning: similarly, depending on backend support, some resources can have
+  versioning (and in case of replication, conflict resolution) capabilities
+
 ## Terminology
 
 <dl class="termlist definitions" data-sort="ascending">
@@ -437,12 +487,12 @@ Example error response (invalid `id` provided):
 * Returns the list of all Collections in a Space (that the requester has
   permission to access)
 
-#### (HTTP API) GET `/space/{space_id}/collections`
+#### (HTTP API) GET `/space/{space_id}/collections/`
 
-Example request (note the lack of trailing slash):
+Example request (note the trailing slash):
 
 ```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
 Host: example.com
 Accept: application/json
 Authorization: ...
@@ -455,7 +505,7 @@ HTTP/1.1 200 OK
 Content-type: application/json
 
 {
-  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections",
+  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/",
   "totalItems": 1,
   "items": [
     {
@@ -1178,7 +1228,7 @@ minimally trusted storage servers is required.
 
 <section class="appendix">
 
-<h2>WAS Authorization Profile v0.1</h2>
+## WAS Authorization Profile v0.1
 
 Like many authorization specifications, the W.A.S. Authorization Profile tries
 to address opposing tensions. On the one hand, to cover the full range of use
