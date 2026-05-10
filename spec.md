@@ -83,6 +83,11 @@ Linksets support optional features such as:
 ## Terminology
 
 <dl class="termlist definitions" data-sort="ascending">
+  <dt><dfn data-lt="collections">collection</dfn></dt>
+  <dd>A namespace and configuration container for resources. Conceptually maps
+    to folders (for file system like storage), buckets (for object storage), or
+    database tables (for RDBMSs). See section [[[#collections]]].</dd>
+
   <dt><dfn data-lt="controllers">controller</dfn></dt>
   <dd>An entity that has the capability to make changes to a given object.</dd>
 
@@ -92,6 +97,9 @@ Linksets support optional features such as:
   <dt><dfn data-lt="server|servers|instance|instances">instance, server</dfn></dt>
   <dd>A deployed instance of an application or service that implements this
     specification's API.</dd>
+
+  <dt><dfn data-lt="zcap|zCaps|capability|authorization capability">zCap (Authorization Capability)</dfn></dt>
+  <dd>See [[DID-CORE]].</dd>
 </dl>
 
 ## Authorization
@@ -119,12 +127,12 @@ calls. However, to start with, this specification will focus on a single minimal
 authorization profile.
 
 See **Appendix [[[#was-authorization-profile-v0-1]]]** for a description of the
-default profile.
+default profile based on Authorization Capabilities (zCaps).
 
 ## Backends
 
-Backends are an infrastructure concern that is orthogonal to the hierarchical 
-Spaces Repository > Space > Collection > Resource storage model.
+Backends are an **optional** infrastructure concern that is orthogonal to the
+hierarchical Spaces Repository > Space > Collection > Resource storage model.
 
 Available backends are registered on the Space level, as a combination of
 server-side configuration and client-side "Bring Your Own Storage" registration.
@@ -137,6 +145,12 @@ external storage provider by connecting to their Dropbox account.
 When a Collection is created, the client can optionally specify the preferred
 backend for that Collection. If no preferred backend is specified, one is assigned
 by the server (usually the `default` backend).
+
+Backends are an **optional system** that exists to serve advanced use cases that
+need fine-grained control over storage configurations.
+An implementer or client of a given server can omit the `backend` property when
+creating a Collection. By default, if not specified, all Collections are
+assigned the `default` backend.
 
 ### Space Backends Available
 
@@ -163,27 +177,9 @@ Content-type: application/json
 
 ### Collection Backend Selected
 
-Example request:
-
-```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/backend HTTP/1.1
-Accept: application/json
-Authorization: ...
-```
-
-Example success response:
-
-```http
-HTTP/1.1 200 OK
-Content-type: application/json
-
-{
-  "type": ["Backend"],
-  "id": "edv",
-  "name": "Encrypted Data Vault"
-}
-```
-
+Each collection has an optional `backend` property that is set during its creation
+(see [[[#collection-data-model]]]). If not specified, it is assumed to have the
+`id` of `default`.
 
 ## Spaces Repositories
 
@@ -373,7 +369,8 @@ Example error response (missing authorization):
 
 ## Spaces
 
-A space is a namespace and a unit of general configuration.
+A space is a namespace for collections and a unit of general configuration,
+a volume of storage that contains one or more collections.
 Conceptually, is maps to a disk partition (for file systems), or a database
 (for relational databases). 
 
@@ -419,7 +416,7 @@ Example request:
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
 Host: example.com
 Accept: application/json
-Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
+Authorization: ...
 ```
 
 Example success response:
@@ -539,8 +536,6 @@ HTTP/1.1 204 No Content
 
 Example error response (missing or invalid authorization):
 
-Example error response (invalid `id` provided, the space does not exist):
-
 Example error response (client is attempting to change an immutable field like
 the space `id`):
 
@@ -639,6 +634,12 @@ Collection properties (user-writable):
 * `type` - A sorted array of strings, MUST include the type `Collection`.
 * `name` (optional) - An arbitrary human-readable name for the collection. Does not
   have to be unique.
+* `backend` (optional) - An object describing the storage backend selected for
+  this collection. If not specified, defaults to the value `{ "id": "default" }`.
+  The backend object's `id` property MUST be from the list of [[[#space-backends-available]]]
+  for the given space. If an unavailable (unsupported) backend is specified,
+  the server MUST throw an error.
+  See section [[[#backends]]] for more details.
 
 Collection properties automatically added by the server:
 
@@ -684,6 +685,10 @@ Authorization: ...
   "type": ["Collection"]
 }
 ```
+In this example, the `id` in the body is not specified, and will be auto-generated
+by the server. The `backend` is not specified, and will be assigned the default
+value.
+
 
 Example response:
 
@@ -704,7 +709,8 @@ Authorization: ...
 {
   "id": "credentials",
   "name": "Verifiable Credentials Collection",
-  "type": ["Collection"]
+  "type": ["Collection"],
+  "backend": { "id": "default" }
 }
 ```
 
@@ -721,7 +727,6 @@ Example error request and response (invalid `id` from
 
 ```http
 POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
-Host: example.com
 Content-Type: application/json
 Authorization: ...
 
@@ -740,6 +745,33 @@ Content-type: application/problem+json
 {
   "type": "https://wallet.storage/spec#create-collection-errors",
   "title": "Invalid collection id (from reserved list)."
+}
+```
+
+Example error request and response (a `backend` object that is not part of
+that space's [[[#space-backends-available]]] list is specified):
+
+```http
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Authorization: ...
+
+{
+  "type": ["Collection"],
+  "backend": { "id": "an-unsupported-backend" }
+}
+```
+
+Response:
+
+```http
+HTTP/1.1 409 Conflict
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#create-collection-errors",
+  "title": "Unsupported backend id, check the space's 'backends available' list."
 }
 ```
 
@@ -762,7 +794,8 @@ Authorization: ...
 {
   "id": "73WakrfVbNJBaAmhQtEeDv",
   "name": "Verifiable Credentials Collection",
-  "type": ["Collection"]
+  "type": ["Collection"],
+  "backend": { "id": "default" }
 }
 ```
 
@@ -822,7 +855,9 @@ Content-type: application/json
   "id": "73WakrfVbNJBaAmhQtEeDv",
   "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
   "name": "Verifiable Credentials Collection",
-  "type": ["Collection"]
+  "type": ["Collection"],
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/linkset",
+  "backend": { "id": "default" }
 }
 ```
 
@@ -873,7 +908,7 @@ Content-type: application/json
 #### (HTTP API) DELETE `/space/{space_id}/{collection_id}`
 
 * Requires appropriate authorization
-  - For example, when using [zCAPs](#zcap) for authorization, the request
+  - For example, when using [=zCaps=] for authorization, the request
     must either: be signed by the resource's or the space's [=controller=],
     or invoke a delegated capability that allows the `DELETE` action.
 
@@ -916,7 +951,8 @@ Blob properties:
 
 ### Resource Data Model
 
-A resource is a named (addressable) object stored in a [=space=], with metadata.
+A resource is a named (addressable) Blob stored in a given [=collection=],
+with metadata.
 The data model is derived from [W3C FileAPI: File 
 Interface](https://w3c.github.io/FileAPI/#file-section), but with the addition
 of a few crucial properties.
@@ -999,9 +1035,10 @@ Content-type: application/problem+json
 #### (HTTP API) GET `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
-  - For example, when using [zCAPs](#zcap) for authorization, the request
-    must either: be signed by the resource's or the space's [=controller=],
-    or invoke a delegated capability that allows the [`GET` action](#get-action)
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for 
+    authorization, the request must either: be signed by the resource's or the
+    space's [=controller=], or invoke a delegated capability that allows the 
+    [`GET` action](#get-action)
 
 Example request to retrieve a resource:
 
@@ -1032,9 +1069,10 @@ of the Resource. This Resource `id` MUST NOT collide with the list of
 #### (HTTP API) PUT `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
-  - For example, when using [zCAPs](#zcap) for authorization, the request
-    must either: be signed by the resource's or the space's [=controller=],
-    or invoke a delegated capability that allows the [`PUT` action](#put-action)
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for 
+    authorization, the request must either: be signed by the resource's or the
+    space's [=controller=], or invoke a delegated capability that allows the 
+    [`PUT` action](#put-action)
 * This operation is idempotent
 * Returns a `204` success response
 
@@ -1109,7 +1147,7 @@ Content-type: application/problem+json
 #### (HTTP API) DELETE `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
-  - For example, when using [zCAPs](#zcap) for authorization, the request
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for authorization, the request
     must either: be signed by the resource's or the space's [=controller=],
     or invoke a delegated capability that allows the
     [`DELETE` action](#delete-action)
@@ -1201,7 +1239,7 @@ primary use cases of this specification.
   the change (this spec is not intended to solve the general problem of DRM).
 
 * The sharing and permission system needs to be primarily based on authorization
-  capabilities (zcaps). It also needs support storage-side authorization policies
+  capabilities (zCaps). It also needs support storage-side authorization policies
   (even if only as a way for an authorized client to receive an appropriate zcap)
 
 * The sharing mechanism needs to be flexible and granular. For example, a given
@@ -1415,7 +1453,7 @@ Example (fetching a space's link set):
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset HTTP/1.1
 Host: example.com
 Accept: application/linkset+json
-Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
+Authorization: ...
 ```
 
 Response:
@@ -1444,7 +1482,7 @@ Example (fetching a specific policy document from the link set):
 ```http
 GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl HTTP/1.1
 Host: example.com
-Authorization: Signature keyId="did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW#z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW" ...
+Authorization: ...
 ```
 
 ```http
