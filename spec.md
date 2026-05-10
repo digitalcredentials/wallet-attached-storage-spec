@@ -67,6 +67,8 @@ extension mechanism, supporting optional features such as:
 * The `acl` auxiliary resource provides a way to specify arbitrary access policies
 * User-writable metadata lets clients attach arbitrary data to resources (for
   example, user-defined "tags" for binary files)
+* A space's Export endpoint allows a client to download a full backup of the
+  data contained in a space
 * The concept of Backends as storage engines for collections
 * Query and search: some Backends support querying or search capability
 * Quota management: some Backends support quota limit enforcement
@@ -162,6 +164,7 @@ Content-type: application/json
 Authorization: ...
 
 {
+  "type": ["Space"],
   "name": "Example space #1",
   "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
 }
@@ -299,16 +302,21 @@ Example error response (missing authorization):
   server if not provided. Note: the `{space_id}` template parameter used in URL
   templates in this spec MUST match that space's `id` property. See Appendix
   [[[#identifiers]]] for additional constraints.
-* `url` (optional) - A relative URL to the space's description resource.
 * `type` - A sorted array of strings, MUST include the type `Space`.
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
 * `controller` - A cryptographic identifier (a [=did=]) 
   of the entity that is authorized to perform operations on the space (or to
   delegate authorization to other entities)
-* `linkset` (optional) - A URL (relative or absolute) to a resource which contains
+
+Space properties automatically added by the server:
+
+* `url` - A relative URL to the space's description resource.
+  Added by the server, used in the Space Description object as well as
+  the [[[#list-spaces-operation]]] result.
+* `linkset` - A relative URL to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
-  documents)
+  documents). Note that this is one of the [[[#space-level-reserved-endpoints]]].
 
 ### Read Space operation
 
@@ -539,31 +547,34 @@ that motivate nesting (e.g., "all comments on a post") are better served by the
 
 ### Collection Data Model
 
-Collection properties:
+Collection properties (user-writable):
 
 * `id` - A unique collection identifier (within a given space). Created by the
   server if not provided. Note: the `{collection_id}` template parameter used in
   URL templates in this spec MUST match that collection's `id` property.
-  See Appendix
-  [[[#identifiers]]] for additional constraints.
+  See Appendix [[[#identifiers]]] for additional constraints.
 * `type` - A sorted array of strings, MUST include the type `Collection`.
-* `url` (optional) - A URL (relative or absolute) to the collection's description
-  resource.
 * `name` (optional) - An arbitrary human-readable name for the collection. Does not
   have to be unique.
-* `linkset` (optional) - A URL (relative or absolute) to a resource which contains
+
+Collection properties automatically added by the server:
+
+* `url` - A relative URL to the collection's description resource.
+  Added by the server, used in the Collection Description object as well as
+  the List Collections operations result.
+* `linkset` - A relative URL to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
-  documents)
+  documents). Note that this is one of the [[[#collection-level-reserved-endpoints]]].
 
-#### Collection JSON Representation
-
-Example empty collection:
+Example collection (JSON representation):
 
 ```json
 {
   "id": "73WakrfVbNJBaAmhQtEeDv",
+  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
+  "type": ["Collection"],
   "name": "Verifiable Credentials Collection",
-  "type": ["Collection"]
+  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/linkset"
 }
 ```
 
