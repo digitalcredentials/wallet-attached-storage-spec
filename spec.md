@@ -121,6 +121,50 @@ authorization profile.
 See **Appendix [[[#was-authorization-profile-v0-1]]]** for a description of the
 default profile.
 
+## Backends
+
+Backends are an infrastructure concern that is orthogonal to the hierarchical 
+Spaces Repository > Space > Collection > Resource storage model.
+
+Available backends are registered on the Space level, as a combination of
+server-side configuration and client-side "Bring Your Own Storage" registration.
+
+For example, on the server configuration side, a given server might support several
+backends -- a file system default backend, an EDV encrypted backend, and a
+PostgreSQL database backend. And on the client side, a user might register an
+external storage provider by connecting to their Dropbox account.
+
+When a Collection is created, the client can optionally specify the preferred
+backend for that Collection. If no preferred backend is specified, one is assigned
+by the server (usually the `default` backend).
+
+### Space Backends Available
+
+Example request:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/backends HTTP/1.1
+Accept: application/json
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+[
+  { "id": "default" },
+  { "id": "dropbox" },
+  { "id": "edv" }
+]
+```
+
+### Collection Backend Selected
+
+
+
 ## Spaces Repositories
 
 A Spaces Repository is a set of API endpoints that supports the creation and
