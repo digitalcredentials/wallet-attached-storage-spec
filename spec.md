@@ -327,6 +327,34 @@ Space properties automatically added by the server:
 
 The format of the response is determined based on content negotiation.
 
+### Space Linkset
+
+The space `linkset` resource (one of the [[[#space-level-reserved-endpoints]]]),
+located at `/space/{space_id}/linkset` contains a set of links to auxiliary
+resources and extension points:
+
+* `/space/{space_id}/acl` - A link to a resource which contains a set of links to access control
+  policy documents.
+* `/space/{space_id}/query` - (Optional) Reserved for cross-space query operations.
+
+Example space linkset resource (via `GET /space/{space_id}/linkset`):
+
+```json
+{
+  "linkset": [
+    {
+      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
+      "acl": [
+        { 
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
+          "media": "application/json"
+        }
+      ]
+    }
+  ]
+}
+```
+
 #### (HTTP API) GET `/space/{space_id}`
 
 Example request:
@@ -575,6 +603,35 @@ Example collection (JSON representation):
   "type": ["Collection"],
   "name": "Verifiable Credentials Collection",
   "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/linkset"
+}
+```
+
+### Collection Linkset
+
+The collection `linkset` resource (one of the [[[#collection-level-reserved-endpoints]]]),
+located at `/space/{space_id}/{collection_id}/linkset` contains a set of links 
+to auxiliary resources and extension points:
+
+* `/space/{space_id}/{collection_id}/acl` - A link to a resource which contains
+  a set of links to access control policy documents.
+* `/space/{space_id}/{collection_id}/query` - (Optional) Reserved for query
+  operations within a collection.
+
+Example collection linkset resource (via `GET /space/{space_id}/{collection_id}/linkset`):
+
+```json
+{
+  "linkset": [
+    {
+      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/",
+      "acl": [
+        { 
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/acl",
+          "media": "application/json"
+        }
+      ]
+    }
+  ]
 }
 ```
 
