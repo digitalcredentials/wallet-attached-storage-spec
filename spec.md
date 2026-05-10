@@ -70,7 +70,7 @@ Linksets support optional features such as:
   example, user-defined "tags" for binary files)
 * A space's Export endpoint allows a client to download a full backup of the
   data contained in a space
-* The concept of Backends as storage engines for collections
+* The concept of [[[#backends]]] as storage engines for collections
 * Query and search: some Backends support querying or search capability
 * Quota management: some Backends support quota limit enforcement
 * Client-side Encryption, using the [Encrypted Data Vaults](https://identity.foundation/edv-spec/)
@@ -79,6 +79,97 @@ Linksets support optional features such as:
   for a given collection, depending on backend support
 * Versioning: similarly, depending on backend support, some resources can have
   versioning (and in case of replication, conflict resolution) capabilities
+
+### API Summary
+
+API summary at a glance.
+
+**Unless otherwise specified** by the [=controller=], all **operations
+require authorization**. This can be overridden by the controller via the `acl`
+policy endpoints. Hosting "public-read" resources, such as HTML files for websites,
+or media files you can link to via `<img src="">`, is a common and valid use
+case.
+
+**(Core) Resource CRUD (Create, Read, Update, Delete):**
+
+* `POST /space/{space_id}/{collection_id}/` - Create a new resource (add to a Collection)
+* `GET /space/{space_id}/{collection_id}/{resource_id}` - Read a resource
+* `PUT /space/{space_id}/{collection_id}/{resource_id}` - Update a resource (create or replace)
+* `DELETE /space/{space_id}/{collection_id}/{resource_id}` - Delete a resource
+* Use a `HEAD` instead of a `GET` to check a resource's headers/metadata without
+  fetching the whole resource. However, do not rely on this for atomic inserts
+  (that is, to check if a resource exists before attempting to create it).
+  Instead, use the backend-specific Transaction mechanisms when appropriate.
+
+**List resources in a Collection (Optional):**
+
+If not implemented on a server, implies that only individual Key/Value operations
+are supported.
+
+* `GET /space/{space_id}/{collection_id}/` - List all resources in a Collection
+
+**Manage Collections in a Space (Optional):**
+
+If not implemented on a server, implies that collections are pre-configured or
+implicit, controlled by the server.
+
+* `POST /space/{space_id}/collections/` - Create a new Collection
+* `GET /space/{space_id}/collections/` - List all Collections in a Space
+* `GET /space/{space_id}/{collection_id}` - Get the Collection Description object (properties)
+* `PUT /space/{space_id}/{collection_id}` - Update a Collection's properties
+* `DELETE /space/{space_id}/{collection_id}` - Delete a Collection and its contents
+
+**Spaces Repository Endpoints - Manage Spaces on a Server (Optional):**
+
+If not implemented on a server, implies that any existing Spaces are
+pre-configred and controlled by the server.
+
+* `POST /spaces/` - Create a new Space
+* `GET /spaces/` - List all Spaces (that the requester is authorized to see)
+
+**Space Endpoints - Manage an individual Space (Optional):**
+
+* `GET /space/{space_id}` - Get the Space Description object (properties)
+* `PUT /space/{space_id}` - Update a Space's properties
+* `DELETE /space/{space_id}` - Delete a Space and its contents
+* `POST /space/{space_id}/export` - Export (download) a Space's contents (all
+  collections and resources)
+
+**Advanced Resource Endpoints (Optional):**
+
+* `GET /space/{space_id}/{collection_id}/{resource_id}/meta` - Get the detailed Metadata object for a resource
+* `PUT /space/{space_id}/{collection_id}/{resource_id}/meta` - Update user-writable Metadata properties for a resource
+
+**Policy Related Endpoints (Optional):**
+
+Policy overrides are hierarchical and inherited. A policy set for the entire
+Space applies to all its Collections and Resources (unless overridden by a
+more specific policy, either at the Collection or Resource level).
+
+* `GET|PUT|DELETE /space/{space_id}/acl` - CRUD on the policy object for the Space
+* `GET|PUT|DELETE /space/{space_id}/{collection_id}/acl` - CRUD on the policy object for the Collection
+* `GET|PUT|DELETE /space/{space_id}/{collection_id}/{resource_id}/acl` - CRUD on the policy object for the Resource
+
+**Linkset / Discovery Endpoints (Optional):**:**
+
+Required if Space endpoints or Collection endpoints are supported.
+
+* `GET /space/{space_id}/linkset` - Get the Linkset object for the Space
+* `GET /space/{space_id}/{collection_id}/linkset` - Get the Linkset object for the Collection
+
+**Query Endpoints (Optional):**
+
+* `POST /space/{space_id}/query` - Reserved for cross-collection queries (backend-specific)
+* `POST /space/{space_id}/{collection_id}/query` - Reserved for queries within a Collection (backend-specific)
+
+**Backend and Quota Management Endpoints (Optional):**
+
+* `GET /space/{space_id}/backends` - Get the list of available backends for a Space
+* `GET /space/{space_id}/quotas` - Get the Quota report object, grouped by available Backend
+* `GET /space/{space_id}/{collection_id}/backend` - Get the detailed backend object for a Collection
+  (the backend summary will also be displayed in the Collection description object)
+* `GET /space/{space_id}/{collection_id}/quota` - Get the Quota report object for
+  the specific Collection (not all Backends will support per-collection quotas however) 
 
 ## Terminology
 
@@ -669,13 +760,13 @@ When a Collection is created via a `POST`, the client can specify the `id` of
 the Collection. If the `id` is not specified, one is auto-generated by the
 server and returned as part of the `Location` response header.
 
-#### (HTTP API) POST `/space/{space_id}/collections`
+#### (HTTP API) POST `/space/{space_id}/collections/`
 
 Example request (`id` not specified, auto-generated by the server and returned
 in the response `Location` header):
 
 ```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
 Host: example.com
 Content-Type: application/json
 Authorization: ...
@@ -701,7 +792,7 @@ Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/21f8169
 Example request, a valid `id` specified in the body:
 
 ```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
 Host: example.com
 Content-Type: application/json
 Authorization: ...
@@ -726,7 +817,7 @@ Example error request and response (invalid `id` from
 [[[#space-level-reserved-endpoints]]] provided):
 
 ```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
 Content-Type: application/json
 Authorization: ...
 
@@ -752,7 +843,7 @@ Example error request and response (a `backend` object that is not part of
 that space's [[[#space-backends-available]]] list is specified):
 
 ```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
+POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
 Host: example.com
 Content-Type: application/json
 Authorization: ...
@@ -1557,8 +1648,8 @@ to auxiliary resources and extension points:
 
 * `/space/{space_id}/{collection_id}/acl` - A link to a resource which contains
   a set of links to access control policy documents.
-* `/space/{space_id}/{collection_id}/backend` - A link to the "Backend Selected
-  for this collection" resource.
+* `/space/{space_id}/{collection_id}/backend` - A link to the detailed "Backend
+  Selected for this collection" resource.
 * `/space/{space_id}/{collection_id}/query` - (Optional) Reserved for query
   operations within a collection.
 
