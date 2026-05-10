@@ -62,7 +62,8 @@ may support multi-tenancy at the space level, adding the concept of [[[#spaces-r
 allowing a client to create and manage multiple spaces.
 
 **Extensions**: Linksets (from [[RFC9264]]) serve as a feature detection and
-extension mechanism, supporting optional features such as:
+extension mechanism. See Appendix [[[#linksets]]] for more details.. 
+Linksets support optional features such as:
 
 * The `acl` auxiliary resource provides a way to specify arbitrary access policies
 * User-writable metadata lets clients attach arbitrary data to resources (for
@@ -278,7 +279,16 @@ Example success response (requester has read access to at least one space):
 HTTP/1.1 200 OK
 Content-type: application/json
 
-...
+{
+  "url": "/spaces/",
+  "totalItems": 1,
+  "items": [
+    {
+      "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e"
+    }
+  ]
+}
 ```
 
 Example success response (requester does NOT have access to any spaces):
@@ -287,7 +297,11 @@ Example success response (requester does NOT have access to any spaces):
 HTTP/1.1 200 OK
 Content-type: application/json
 
-...
+{
+  "url": "/spaces/",
+  "totalItems": 0,
+  "items": []
+}
 ```
 
 Example error response (missing authorization):
@@ -316,7 +330,8 @@ Space properties automatically added by the server:
   the [[[#list-spaces-operation]]] result.
 * `linkset` - A relative URL to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
-  documents). Note that this is one of the [[[#space-level-reserved-endpoints]]].
+  documents). See section [[[#space-linkset]]].
+  Note that this is one of the [[[#space-level-reserved-endpoints]]].
 
 ### Read Space operation
 
@@ -326,34 +341,6 @@ Space properties automatically added by the server:
 * Only includes the resources the requester is authorized to see
 
 The format of the response is determined based on content negotiation.
-
-### Space Linkset
-
-The space `linkset` resource (one of the [[[#space-level-reserved-endpoints]]]),
-located at `/space/{space_id}/linkset` contains a set of links to auxiliary
-resources and extension points:
-
-* `/space/{space_id}/acl` - A link to a resource which contains a set of links to access control
-  policy documents.
-* `/space/{space_id}/query` - (Optional) Reserved for cross-space query operations.
-
-Example space linkset resource (via `GET /space/{space_id}/linkset`):
-
-```json
-{
-  "linkset": [
-    {
-      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
-      "acl": [
-        { 
-          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
-          "media": "application/json"
-        }
-      ]
-    }
-  ]
-}
-```
 
 #### (HTTP API) GET `/space/{space_id}`
 
@@ -592,7 +579,8 @@ Collection properties automatically added by the server:
   the List Collections operations result.
 * `linkset` - A relative URL to a resource which contains
   a set of links to auxiliary resources (such as to access control policy
-  documents). Note that this is one of the [[[#collection-level-reserved-endpoints]]].
+  documents). See section [[[#collection-linkset]]].
+  Note that this is one of the [[[#collection-level-reserved-endpoints]]].
 
 Example collection (JSON representation):
 
@@ -603,35 +591,6 @@ Example collection (JSON representation):
   "type": ["Collection"],
   "name": "Verifiable Credentials Collection",
   "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/linkset"
-}
-```
-
-### Collection Linkset
-
-The collection `linkset` resource (one of the [[[#collection-level-reserved-endpoints]]]),
-located at `/space/{space_id}/{collection_id}/linkset` contains a set of links 
-to auxiliary resources and extension points:
-
-* `/space/{space_id}/{collection_id}/acl` - A link to a resource which contains
-  a set of links to access control policy documents.
-* `/space/{space_id}/{collection_id}/query` - (Optional) Reserved for query
-  operations within a collection.
-
-Example collection linkset resource (via `GET /space/{space_id}/{collection_id}/linkset`):
-
-```json
-{
-  "linkset": [
-    {
-      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/",
-      "acl": [
-        { 
-          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/acl",
-          "media": "application/json"
-        }
-      ]
-    }
-  ]
 }
 ```
 
@@ -1404,7 +1363,7 @@ Content-type: application/linkset+json
       "acl": [
         { 
           "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
-          "media": "application/json"
+          "type": "application/json"
         }
       ]
     }
@@ -1428,13 +1387,111 @@ Content-type: application/json
 ```
 </section>
 
-## Security and Privacy Considerations
+<section class="appendix">
 
-To be worked out in the CCG task force.
+## Linksets
 
-## Internationalization Considerations
+Linksets (from [[RFC9264]]) serve as the main feature detection and extension
+mechanism. They can be discovered, via the `linkset` property, from the following:
 
-To be worked out in the CCG task force.
+* The Space Description object, see [[[#space-data-model]]].
+* The Collection Description object, see [[[#collection-data-model]]].
+
+### Space Linkset
+
+The space `linkset` resource (one of the [[[#space-level-reserved-endpoints]]]),
+located at `/space/{space_id}/linkset` contains a set of links to auxiliary
+resources and extension points:
+
+* `/space/{space_id}/acl` - A link to a resource which contains a set of links to access control
+  policy documents.
+* `/space/{space_id}/backends` - A link to the "Backends Available" resource.
+* `/space/{space_id}/query` - Reserved for cross-space query operations.
+
+Example space linkset resource request and response:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset HTTP/1.1
+Accept: application/linkset+json
+Authorization: ...
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/linkset+json
+
+{
+  "linkset": [
+    {
+      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
+      "acl": [
+        { 
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
+          "type": "application/json"
+        }
+      ],
+      "https://wallet.storage/spec#backends-available": [
+        {
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/backends",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Collection Linkset
+
+The collection `linkset` resource (one of the [[[#collection-level-reserved-endpoints]]]),
+located at `/space/{space_id}/{collection_id}/linkset` contains a set of links
+to auxiliary resources and extension points:
+
+* `/space/{space_id}/{collection_id}/acl` - A link to a resource which contains
+  a set of links to access control policy documents.
+* `/space/{space_id}/{collection_id}/backend` - A link to the "Backend Selected
+  for this collection" resource.
+* `/space/{space_id}/{collection_id}/query` - (Optional) Reserved for query
+  operations within a collection.
+
+Example collection linkset resource request and response:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/linkset HTTP/1.1
+Accept: application/linkset+json
+Authorization: ...
+```
+
+Response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/linkset+json
+
+{
+  "linkset": [
+    {
+      "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/",
+      "acl": [
+        { 
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/acl",
+          "type": "application/json"
+        }
+      ],
+      "https://wallet.storage/spec#backend": [
+        {
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/backend",
+          "type": "application/json"
+        }
+      ]
+    }
+  ]
+}
+```
+
+</section>
 
 <section class="appendix">
 
@@ -1447,12 +1504,13 @@ level operations. Usually, the path segment following the `/space/{space_id}/` p
 is the id of a Collection. The list of reserved endpoints below means that
 collections `id`s MUST NOT collide with the corresponding reserved segments.
 
-| Reserved API Endpoint            | Reserved segment   | Purpose                                |
-|----------------------------------|--------------------|----------------------------------------|
-| `/space/{space_id}/collections`  | `collections`      | List and create collections            |
-| `/space/{space_id}/linkset`      | `linkset`          | Links to auxiliary resources           |
-| `/space/{space_id}/acl`          | `acl`              | Access control policy                  |
-| `/space/{space_id}/query`        | `query`            | Reserved for cross-collection queries  |
+| Reserved API Endpoint           | Reserved segment   | Purpose                               |
+|---------------------------------|--------------------|---------------------------------------|
+| `/space/{space_id}/acl`         | `acl`              | Access control policy                 |
+| `/space/{space_id}/backends`    | `backends`         | Storage backends available            |
+| `/space/{space_id}/collections` | `collections`      | List and create collections           |
+| `/space/{space_id}/linkset`     | `linkset`          | Links to auxiliary resources          |
+| `/space/{space_id}/query`       | `query`            | Reserved for cross-collection queries |
 
 If a client attempts to create a collection with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
@@ -1465,9 +1523,10 @@ level operations. Usually, the path segment following the
 reserved endpoints below means that resource `id`s MUST NOT collide with the 
 corresponding reserved segments.
 
-| Reserved API Endpoint                     | Reserved segment | Purpose                             |
-|-------------------------------------------|------------------|-------------------------------------|
-| `/space/{space_id}/{collection_id}/query` | `query`          | Query resources within a collection |
+| Reserved API Endpoint                       | Reserved segment | Purpose                             |
+|---------------------------------------------|------------------|-------------------------------------|
+| `/space/{space_id}/{collection_id}/backend` | `backend`        | Storage backend selected            |
+| `/space/{space_id}/{collection_id}/query`   | `query`          | Query resources within a collection |
 
 If a client attempts to create a resource with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
