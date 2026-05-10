@@ -171,6 +171,25 @@ Required if Space endpoints or Collection endpoints are supported.
 * `GET /space/{space_id}/{collection_id}/quota` - Get the Quota report object for
   the specific Collection (not all Backends will support per-collection quotas however) 
 
+### Error Handling
+
+This specification uses [[RFC9457]] Problem Details for HTTP APIs for error responses.
+
+* Error responses SHOULD be returned using the `application/problem+json` content type.
+* `type` and `title` properties are REQUIRED.
+* `errors` array with `{ detail, pointer }` objects is encouraged where appropriate.
+
+When returning errors, keep in mind the principle of **maximum privacy**:
+always "not found" instead of "not authorized". The _existence_ of a resource,
+collection, or space, is by itself an item of sensitive information.
+If a client makes an API call, and they have insufficient authorization to
+perform that action, a "not found" error (such as HTTP 404) MUST be returned,
+just as if that resource (or space or collection) did not exist. 
+To put it another way, an unauthorized client (meaning, either not carrying
+any authorization in the request itself, or possessing insufficient permissions)
+MUST NOT be able to discover the existence of a resource based on the error
+response.
+
 ## Terminology
 
 <dl class="termlist definitions" data-sort="ascending">
@@ -190,7 +209,8 @@ Required if Space endpoints or Collection endpoints are supported.
     specification's API.</dd>
 
   <dt><dfn data-lt="zcap|zCaps|capability|authorization capability">zCap (Authorization Capability)</dfn></dt>
-  <dd>See [[DID-CORE]].</dd>
+  <dd>See [zCap Developer Guide](https://interop-alliance.github.io/zcap-developer-guide/) for more
+    details.</dd>
 </dl>
 
 ## Authorization
@@ -276,7 +296,7 @@ Each collection has an optional `backend` property that is set during its creati
 
 A Spaces Repository is a set of API endpoints that supports the creation and
 management of multiple spaces on a given [=server=].
-This `/spaces/` set of API endpoints is optional. If a server does not support
+This `/spaces/` set of API endpoints is **optional**. If a server does not support
 this feature (for example, if it is a single-tenant server with an existing 
 hardcoded Space), then it can implement only the `/space/{space_id}/` endpoints
 and get most of the functionality of this specification.
@@ -1486,7 +1506,7 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 4. Proof of Possession / authorization invocation: HTTP Signatures.
    MUST - [RFC 9421 HTTP Message Signatures](https://www.rfc-editor.org/rfc/rfc9421.html),
    MAY - [HTTP Signatures (Cavage draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
-5. Access Control / Policy language data model: TBD (see <#16>)
+5. Access Control / Policy language data model: TBD
 
 ### Space `controller` and the Root of Trust
 
@@ -1701,13 +1721,15 @@ level operations. Usually, the path segment following the `/space/{space_id}/` p
 is the id of a Collection. The list of reserved endpoints below means that
 collections `id`s MUST NOT collide with the corresponding reserved segments.
 
-| Reserved API Endpoint           | Reserved segment   | Purpose                               |
-|---------------------------------|--------------------|---------------------------------------|
-| `/space/{space_id}/acl`         | `acl`              | Access control policy                 |
-| `/space/{space_id}/backends`    | `backends`         | Storage backends available            |
-| `/space/{space_id}/collections` | `collections`      | List and create collections           |
-| `/space/{space_id}/linkset`     | `linkset`          | Links to auxiliary resources          |
-| `/space/{space_id}/query`       | `query`            | Reserved for cross-collection queries |
+| Reserved API Endpoint           | Reserved segment | Purpose                                |
+|---------------------------------|------------------|----------------------------------------|
+| `/space/{space_id}/acl`         | `acl`            | Access control policy                  |
+| `/space/{space_id}/backends`    | `backends`       | Storage backends available             |
+| `/space/{space_id}/collections` | `collections`    | List and create collections            |
+| `/space/{space_id}/export`      | `export`         | Export (download) space contents       |
+| `/space/{space_id}/linkset`     | `linkset`        | Links to auxiliary resources           |
+| `/space/{space_id}/query`       | `query`          | Reserved for cross-collection queries  |
+| `/space/{space_id}/quotas`      | `quotas`         | Reserved for per-backend quota report  |
 
 If a client attempts to create a collection with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
@@ -1724,7 +1746,9 @@ corresponding reserved segments.
 |---------------------------------------------|------------------|-------------------------------------|
 | `/space/{space_id}/{collection_id}/acl`     | `acl`            | Access control policy               |
 | `/space/{space_id}/{collection_id}/backend` | `backend`        | Storage backend selected            |
+| `/space/{space_id}/{collection_id}/linkset` | `linkset`        | Links to auxiliary resources        |
 | `/space/{space_id}/{collection_id}/query`   | `query`          | Query resources within a collection |
+| `/space/{space_id}/{collection_id}/quota`   | `quota`          | Storage quota report for collection |
 
 If a client attempts to create a resource with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
