@@ -163,6 +163,26 @@ Content-type: application/json
 
 ### Collection Backend Selected
 
+Example request:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/backend HTTP/1.1
+Accept: application/json
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "type": ["Backend"],
+  "id": "edv",
+  "name": "Encrypted Data Vault"
+}
+```
 
 
 ## Spaces Repositories
@@ -171,7 +191,8 @@ A Spaces Repository is a set of API endpoints that supports the creation and
 management of multiple spaces on a given [=server=].
 This `/spaces/` set of API endpoints is optional. If a server does not support
 this feature (for example, if it is a single-tenant server with an existing 
-hardcoded Space), then it can implement only the `/space/{space_id}/` endpoints.
+hardcoded Space), then it can implement only the `/space/{space_id}/` endpoints
+and get most of the functionality of this specification.
 
 ### Create Space operation
 
@@ -352,6 +373,10 @@ Example error response (missing authorization):
 
 ## Spaces
 
+A space is a namespace and a unit of general configuration.
+Conceptually, is maps to a disk partition (for file systems), or a database
+(for relational databases). 
+
 ### Space Data Model
 
 `Space` properties:
@@ -452,7 +477,6 @@ of the Space.
 * Allows the client to update the following fields:
   - `name`
   - `controller`
-  - `linkset`
 
 #### (HTTP API) PUT `/space/{space_id}`
 
@@ -1569,6 +1593,7 @@ corresponding reserved segments.
 
 | Reserved API Endpoint                       | Reserved segment | Purpose                             |
 |---------------------------------------------|------------------|-------------------------------------|
+| `/space/{space_id}/{collection_id}/acl`     | `acl`            | Access control policy               |
 | `/space/{space_id}/{collection_id}/backend` | `backend`        | Storage backend selected            |
 | `/space/{space_id}/{collection_id}/query`   | `query`          | Query resources within a collection |
 
