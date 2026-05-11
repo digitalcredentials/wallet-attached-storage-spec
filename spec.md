@@ -65,7 +65,7 @@ allowing a client to create and manage multiple spaces.
 extension mechanism. See Appendix [[[#linksets]]] for more details.. 
 Linksets support optional features such as:
 
-* The `acl` auxiliary resource provides a way to specify arbitrary access policies
+* The `policy` auxiliary resource provides a way to specify arbitrary access policies
 * User-writable metadata lets clients attach arbitrary data to resources (for
   example, user-defined "tags" for binary files)
 * A space's Export endpoint allows a client to download a full backup of the
@@ -85,7 +85,7 @@ Linksets support optional features such as:
 API summary at a glance.
 
 **Unless otherwise specified** by the [=controller=], all **operations
-require authorization**. This can be overridden by the controller via the `acl`
+require authorization**. This can be overridden by the controller via the `policy`
 policy endpoints. Hosting "public-read" resources, such as HTML files for websites,
 or media files you can link to via `<img src="">`, is a common and valid use
 case.
@@ -146,9 +146,9 @@ Policy overrides are hierarchical and inherited. A policy set for the entire
 Space applies to all its Collections and Resources (unless overridden by a
 more specific policy, either at the Collection or Resource level).
 
-* `GET|PUT|DELETE /space/{space_id}/acl` - CRUD on the policy object for the Space
-* `GET|PUT|DELETE /space/{space_id}/{collection_id}/acl` - CRUD on the policy object for the Collection
-* `GET|PUT|DELETE /space/{space_id}/{collection_id}/{resource_id}/acl` - CRUD on the policy object for the Resource
+* `GET|PUT|DELETE /space/{space_id}/policy` - CRUD on the policy object for the Space
+* `GET|PUT|DELETE /space/{space_id}/{collection_id}/policy` - CRUD on the policy object for the Collection
+* `GET|PUT|DELETE /space/{space_id}/{collection_id}/{resource_id}/policy` - CRUD on the policy object for the Resource
 
 **Linkset / Discovery Endpoints (Optional):**
 
@@ -1588,9 +1588,9 @@ Content-type: application/linkset+json
   "linkset": [
     {
       "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
-      "acl": [
+      "https://wallet.space/spec#policy": [
         { 
-          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/policy",
           "type": "application/json"
         }
       ]
@@ -1602,7 +1602,7 @@ Content-type: application/linkset+json
 Example (fetching a specific policy document from the link set):
 
 ```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl HTTP/1.1
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/policy HTTP/1.1
 Host: example.com
 Authorization: ...
 ```
@@ -1631,7 +1631,7 @@ The space `linkset` resource (one of the [[[#space-level-reserved-endpoints]]]),
 located at `/space/{space_id}/linkset` contains a set of links to auxiliary
 resources and extension points:
 
-* `/space/{space_id}/acl` - A link to a resource which contains a set of links to access control
+* `/space/{space_id}/policy` - A link to a resource which contains a set of links to access control
   policy documents.
 * `/space/{space_id}/backends` - A link to the "Backends Available" resource.
 * `/space/{space_id}/query` - Reserved for cross-space query operations.
@@ -1654,9 +1654,9 @@ Content-type: application/linkset+json
   "linkset": [
     {
       "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
-      "acl": [
+      "https://wallet.storage/spec#policy": [
         { 
-          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/acl",
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/policy",
           "type": "application/json"
         }
       ],
@@ -1677,7 +1677,7 @@ The collection `linkset` resource (one of the [[[#collection-level-reserved-endp
 located at `/space/{space_id}/{collection_id}/linkset` contains a set of links
 to auxiliary resources and extension points:
 
-* `/space/{space_id}/{collection_id}/acl` - A link to a resource which contains
+* `/space/{space_id}/{collection_id}/policy` - A link to a resource which contains
   a set of links to access control policy documents.
 * `/space/{space_id}/{collection_id}/backend` - A link to the detailed "Backend
   Selected for this collection" resource.
@@ -1702,9 +1702,9 @@ Content-type: application/linkset+json
   "linkset": [
     {
       "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/",
-      "acl": [
+      "https://wallet.storage/spec#policy": [
         { 
-          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/acl",
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/policy",
           "type": "application/json"
         }
       ],
@@ -1734,7 +1734,7 @@ collections `id`s MUST NOT collide with the corresponding reserved segments.
 
 | Reserved API Endpoint           | Reserved segment | Purpose                                |
 |---------------------------------|------------------|----------------------------------------|
-| `/space/{space_id}/acl`         | `acl`            | Access control policy                  |
+| `/space/{space_id}/policy`      | `policy`         | Access control policy                  |
 | `/space/{space_id}/backends`    | `backends`       | Storage backends available             |
 | `/space/{space_id}/collections` | `collections`    | List and create collections            |
 | `/space/{space_id}/export`      | `export`         | Export (download) space contents       |
@@ -1753,13 +1753,13 @@ level operations. Usually, the path segment following the
 reserved endpoints below means that resource `id`s MUST NOT collide with the 
 corresponding reserved segments.
 
-| Reserved API Endpoint                       | Reserved segment | Purpose                             |
-|---------------------------------------------|------------------|-------------------------------------|
-| `/space/{space_id}/{collection_id}/acl`     | `acl`            | Access control policy               |
-| `/space/{space_id}/{collection_id}/backend` | `backend`        | Storage backend selected            |
-| `/space/{space_id}/{collection_id}/linkset` | `linkset`        | Links to auxiliary resources        |
-| `/space/{space_id}/{collection_id}/query`   | `query`          | Query resources within a collection |
-| `/space/{space_id}/{collection_id}/quota`   | `quota`          | Storage quota report for collection |
+| Reserved API Endpoint                        | Reserved segment | Purpose                             |
+|----------------------------------------------|------------------|-------------------------------------|
+| `/space/{space_id}/{collection_id}/policy`   | `policy`         | Access control policy               |
+| `/space/{space_id}/{collection_id}/backend`  | `backend`        | Storage backend selected            |
+| `/space/{space_id}/{collection_id}/linkset`  | `linkset`        | Links to auxiliary resources        |
+| `/space/{space_id}/{collection_id}/query`    | `query`          | Query resources within a collection |
+| `/space/{space_id}/{collection_id}/quota`    | `quota`          | Storage quota report for collection |
 
 If a client attempts to create a resource with an `id` that collides with a
 reserved segment list above, the server MUST return a 409 Conflict error.
