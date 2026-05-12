@@ -695,6 +695,9 @@ Example error response (invalid `id` provided):
 
 * Returns the list of all Collections in a Space (that the requester has
   permission to access)
+* Since Collection's `name` property is optional, default it to be the same
+  value as `id` when `name` is missing. (The name is intended to drive UIs, so
+  defaulting to `id` simplifies consuming client logic.)
 
 #### (HTTP API) GET `/space/{space_id}/collections/`
 
@@ -715,11 +718,17 @@ Content-type: application/json
 
 {
   "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/",
-  "totalItems": 1,
+  "totalItems": 2,
   "items": [
     {
+      "id": "example",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/example",
+      "name": "Example Collection"
+    },
+    {
       "id": "73WakrfVbNJBaAmhQtEeDv",
-      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv"
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
+      "name": "73WakrfVbNJBaAmhQtEeDv"
     }
   ]
 }
