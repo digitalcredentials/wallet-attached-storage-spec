@@ -30,7 +30,7 @@ Initial use cases that are motivating this work:
 ### Scope and Conformance Profiles
 
 This specification represents a layered and modular approach to storage, combining
-core features and optional extension points. 
+core features and optional extension points.
 
 **Permissioned Key/Value CRUD**: At its core, this spec is an example of how to
 implement a permissioned key/value CRUD API using simple HTTP verbs and delegatable
@@ -62,7 +62,7 @@ may support multi-tenancy at the space level, adding the concept of [[[#spaces-r
 allowing a client to create and manage multiple spaces.
 
 **Extensions**: Linksets (from [[RFC9264]]) serve as a feature detection and
-extension mechanism. See Appendix [[[#linksets]]] for more details.. 
+extension mechanism. See Appendix [[[#linksets]]] for more details..
 Linksets support optional features such as:
 
 * The `policy` auxiliary resource provides a way to specify arbitrary access policies
@@ -169,7 +169,7 @@ Required if Space endpoints or Collection endpoints are supported.
 * `GET /space/{space_id}/{collection_id}/backend` - Get the detailed backend object for a Collection
   (the backend summary will also be displayed in the Collection description object)
 * `GET /space/{space_id}/{collection_id}/quota` - Get the Quota report object for
-  the specific Collection (not all Backends will support per-collection quotas however) 
+  the specific Collection (not all Backends will support per-collection quotas however)
 
 ### Error Handling
 
@@ -179,12 +179,17 @@ This specification uses [[RFC9457]] Problem Details for HTTP APIs for error resp
 * `type` and `title` properties are REQUIRED.
 * `errors` array with `{ detail, pointer }` objects is encouraged where appropriate.
 
+The `type` property is a URI identifying the _kind_ of problem (not the
+operation), and the same `type` is reused across operations. See Appendix
+[[[#error-type-registry]]] for the catalog of `type` URIs this specification
+defines, along with their typical status codes.
+
 When returning errors, keep in mind the principle of **maximum privacy**:
 always "not found" instead of "not authorized". The _existence_ of a resource,
 collection, or space, is by itself an item of sensitive information.
 If a client makes an API call, and they have insufficient authorization to
 perform that action, a "not found" error (such as HTTP 404) MUST be returned,
-just as if that resource (or space or collection) did not exist. 
+just as if that resource (or space or collection) did not exist.
 To put it another way, an unauthorized client (meaning, either not carrying
 any authorization in the request itself, or possessing insufficient permissions)
 MUST NOT be able to discover the existence of a resource based on the error
@@ -309,7 +314,7 @@ Each collection has an optional `backend` property that is set during its creati
 A Spaces Repository is a set of API endpoints that supports the creation and
 management of multiple spaces on a given [=server=].
 This `/spaces/` set of API endpoints is **optional**. If a server does not support
-this feature (for example, if it is a single-tenant server with an existing 
+this feature (for example, if it is a single-tenant server with an existing
 hardcoded Space), then it can implement only the `/space/{space_id}/` endpoints
 and get most of the functionality of this specification.
 
@@ -385,8 +390,8 @@ Content-type: application/problem+json
 Content-Language: en
 
 {
-  "type": "https://wallet.storage/spec#create-space-errors",
-  "title": "Invalid Create Space request.",
+  "type": "https://wallet.storage/spec#invalid-request-body",
+  "title": "Invalid Create Space body.",
   "errors": [
     {
       "detail": "'controller' property is required.",
@@ -404,7 +409,7 @@ Content-type: application/problem+json
 Content-Language: en
 
 {
-  "type": "https://wallet.storage/spec#create-space-errors",
+  "type": "https://wallet.storage/spec#missing-authorization",
   "title": "Invalid Create Space request.",
   "errors": [
     {
@@ -423,11 +428,12 @@ Content-type: application/problem+json
 Content-Language: en
 
 {
-  "type": "https://wallet.storage/spec#create-space-errors",
+  "type": "https://wallet.storage/spec#controller-mismatch",
   "title": "Invalid Create Space request.",
   "errors": [
     {
-      "detail": "The signing DID from the Authorization header must match the 'controller' DID in request body."
+      "detail": "The signing DID from the Authorization header must match the 'controller' DID in request body.",
+      "pointer": "#/controller"
     }
   ]
 }
@@ -495,7 +501,7 @@ Example error response (missing authorization):
 A space is a namespace for collections and a unit of general configuration,
 a volume of storage that contains one or more collections.
 Conceptually, is maps to a disk partition (for file systems), or a database
-(for relational databases). 
+(for relational databases).
 
 ### Space Data Model
 
@@ -508,7 +514,7 @@ Conceptually, is maps to a disk partition (for file systems), or a database
 * `type` - A sorted array of strings, MUST include the type `Space`.
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
-* `controller` - A cryptographic identifier (a [=did=]) 
+* `controller` - A cryptographic identifier (a [=did=])
   of the entity that is authorized to perform operations on the space (or to
   delegate authorization to other entities)
 
@@ -570,7 +576,7 @@ HTTP/1.1 404 Not Found
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#read-space-errors",
+  "type": "https://wallet.storage/spec#not-found",
   "title": "Space not found or insufficient authorization."
 }
 ```
@@ -582,7 +588,7 @@ HTTP/1.1 404 Not Found
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#read-space-errors",
+  "type": "https://wallet.storage/spec#not-found",
   "title": "Space not found or insufficient authorization."
 }
 ```
@@ -875,7 +881,7 @@ HTTP/1.1 409 Conflict
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#create-collection-errors",
+  "type": "https://wallet.storage/spec#reserved-id",
   "title": "Invalid collection id (from reserved list)."
 }
 ```
@@ -902,7 +908,7 @@ HTTP/1.1 409 Conflict
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#create-collection-errors",
+  "type": "https://wallet.storage/spec#unsupported-backend",
   "title": "Unsupported backend id, check the space's 'backends available' list."
 }
 ```
@@ -957,7 +963,7 @@ HTTP/1.1 409 Conflict
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#create-collection-errors",
+  "type": "https://wallet.storage/spec#reserved-id",
   "title": "Invalid collection id (from reserved list)."
 }
 ```
@@ -1085,7 +1091,7 @@ Blob properties:
 
 A resource is a named (addressable) Blob stored in a given [=collection=],
 with metadata.
-The data model is derived from [W3C FileAPI: File 
+The data model is derived from [W3C FileAPI: File
 Interface](https://w3c.github.io/FileAPI/#file-section), but with the addition
 of a few crucial properties.
 
@@ -1155,7 +1161,7 @@ HTTP/1.1 409 Conflict
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#create-resource-errors",
+  "type": "https://wallet.storage/spec#reserved-id",
   "title": "Invalid resource id (from reserved list)."
 }
 ```
@@ -1167,9 +1173,9 @@ Content-type: application/problem+json
 #### (HTTP API) GET `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
-  - For example, when using [zCaps](#was-authorization-profile-v0-1) for 
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for
     authorization, the request must either: be signed by the resource's or the
-    space's [=controller=], or invoke a delegated capability that allows the 
+    space's [=controller=], or invoke a delegated capability that allows the
     [`GET` action](#get-action)
 
 Example request to retrieve a resource:
@@ -1201,9 +1207,9 @@ of the Resource. This Resource `id` MUST NOT collide with the list of
 #### (HTTP API) PUT `/space/{space_id}/{collection_id}/{resource_id}`
 
 * Requires appropriate authorization
-  - For example, when using [zCaps](#was-authorization-profile-v0-1) for 
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for
     authorization, the request must either: be signed by the resource's or the
-    space's [=controller=], or invoke a delegated capability that allows the 
+    space's [=controller=], or invoke a delegated capability that allows the
     [`PUT` action](#put-action)
 * This operation is idempotent
 * Returns a `204` success response
@@ -1264,7 +1270,7 @@ HTTP/1.1 409 Conflict
 Content-type: application/problem+json
 
 {
-  "type": "https://wallet.storage/spec#create-resource-errors",
+  "type": "https://wallet.storage/spec#reserved-id",
   "title": "Invalid resource id (from reserved list)."
 }
 ```
@@ -1317,11 +1323,11 @@ to have the following properties.
 
 1. **URL-safety** - All characters in a given identifier MUST be URL-safe.
 2. **Uniqueness** - All identifiers MUST be unique within a given container.
-  That is: Space `id`s (denoted by `{space_id}` in URL templates) MUST be
-  unique within a given [=server=], Collection `id`s (denoted by `{collection_id}`
-  in URL templates) MUST be unique within a given Space, and Resource `id`s
-  (denoted by `{resource_id}` in URL templates) MUST be unique within a given
-  Collection.
+   That is: Space `id`s (denoted by `{space_id}` in URL templates) MUST be
+   unique within a given [=server=], Collection `id`s (denoted by `{collection_id}`
+   in URL templates) MUST be unique within a given Space, and Resource `id`s
+   (denoted by `{resource_id}` in URL templates) MUST be unique within a given
+   Collection.
 
 ### Identifier Length and Format
 
@@ -1597,7 +1603,7 @@ Content-type: application/linkset+json
   "linkset": [
     {
       "anchor": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/",
-      "https://wallet.space/spec#policy": [
+      "https://wallet.storage/spec#policy": [
         { 
           "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/policy",
           "type": "application/json"
@@ -1640,9 +1646,12 @@ The space `linkset` resource (one of the [[[#space-level-reserved-endpoints]]]),
 located at `/space/{space_id}/linkset` contains a set of links to auxiliary
 resources and extension points:
 
-* `/space/{space_id}/policy` - A link to a resource which contains a set of links to access control
+* <dfn id="policy">`policy`</dfn> (`https://wallet.storage/spec#policy`) - A link to the
+  `/space/{space_id}/policy` resource, which contains a set of links to access control
   policy documents.
-* `/space/{space_id}/backends` - A link to the "Backends Available" resource.
+* <dfn id="backends-available">`backends-available`</dfn>
+  (`https://wallet.storage/spec#backends-available`) - A link to the
+  `/space/{space_id}/backends` "Backends Available" resource.
 * `/space/{space_id}/query` - Reserved for cross-space query operations.
 
 Example space linkset resource request and response:
@@ -1686,10 +1695,12 @@ The collection `linkset` resource (one of the [[[#collection-level-reserved-endp
 located at `/space/{space_id}/{collection_id}/linkset` contains a set of links
 to auxiliary resources and extension points:
 
-* `/space/{space_id}/{collection_id}/policy` - A link to a resource which contains
-  a set of links to access control policy documents.
-* `/space/{space_id}/{collection_id}/backend` - A link to the detailed "Backend
-  Selected for this collection" resource.
+* The [=policy=] relation (`https://wallet.storage/spec#policy`) - A link to the
+  `/space/{space_id}/{collection_id}/policy` resource, which contains a set of links
+  to access control policy documents.
+* <dfn id="backend">`backend`</dfn> (`https://wallet.storage/spec#backend`) - A link to the
+  detailed `/space/{space_id}/{collection_id}/backend` "Backend Selected for this
+  collection" resource.
 * `/space/{space_id}/{collection_id}/query` - (Optional) Reserved for query
   operations within a collection.
 
@@ -1759,7 +1770,7 @@ reserved segment list above, the server MUST return a 409 Conflict error.
 The following path segments represent reserved API endpoints for [[[#collections]]]
 level operations. Usually, the path segment following the
 `/space/{space_id}/{collection_id}/` prefix is the id of a Resource. The list of
-reserved endpoints below means that resource `id`s MUST NOT collide with the 
+reserved endpoints below means that resource `id`s MUST NOT collide with the
 corresponding reserved segments.
 
 | Reserved API Endpoint                        | Reserved segment | Purpose                             |
@@ -1781,6 +1792,48 @@ level operations.
 | Reserved API Endpoint                                  | Reserved segment | Purpose                              |
 |--------------------------------------------------------|------------------|--------------------------------------|
 | `/space/{space_id}/{collection_id}/{resource_id}/meta` | `meta`           | User-defined metadata for a resource |
+
+</section>
+
+<section class="appendix">
+
+## Error Type Registry
+
+This specification uses [[RFC9457]] Problem Details for HTTP APIs for error
+responses (see [[[#error-handling]]]). The `type` property of a problem
+response is a URI identifying the _kind_ of problem. Following [[RFC9457]],
+a `type` is reused across operations: a single kind such as
+[=invalid-id=] is emitted by Create, Update, and Read operations
+across Spaces, Collections, and Resources alike. The per-occurrence specifics
+belong in the `errors` array (`detail` and an optional `pointer`), and the
+short human-readable summary in `title`.
+
+Each `type` URI is a fragment anchor into this registry. The status codes
+listed below are typical; a single kind MAY be returned with more than one
+status code depending on the operation.
+
+| `type` URI | Anchor | Typical status | Description |
+|------------|--------|----------------|-------------|
+| `https://wallet.storage/spec#not-found` | <dfn id="not-found">not-found</dfn> | 404 | The resource (Space, Collection, or Resource) does not exist, **or** the caller is not authorized to access it. These two conditions are deliberately indistinguishable -- see the privacy note below. |
+| `https://wallet.storage/spec#invalid-id` | <dfn id="invalid-id">invalid-id</dfn> | 400 | A Space, Collection, or Resource `id` is missing or not URL-safe. |
+| `https://wallet.storage/spec#reserved-id` | <dfn id="reserved-id">reserved-id</dfn> | 409 | A client-supplied `id` collides with a [[[#reserved-path-segment-registry]]] segment. |
+| `https://wallet.storage/spec#invalid-request-body` | <dfn id="invalid-request-body">invalid-request-body</dfn> | 400 | The request body is missing or invalid (e.g. a required property is absent). Entries in `errors` SHOULD carry a `pointer` to the offending field. |
+| `https://wallet.storage/spec#missing-content-type` | <dfn id="missing-content-type">missing-content-type</dfn> | 400 | A required `Content-Type` header is missing. |
+| `https://wallet.storage/spec#missing-authorization` | <dfn id="missing-authorization">missing-authorization</dfn> | 401 | Required `Authorization` / `Capability-Invocation` headers (or proof of possession) are missing. |
+| `https://wallet.storage/spec#invalid-authorization-header` | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn> | 400 | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification. |
+| `https://wallet.storage/spec#controller-mismatch` | <dfn id="controller-mismatch">controller-mismatch</dfn> | 400 | The DID that signed the capability invocation does not match the `controller` supplied in a Create Space request body. |
+| `https://wallet.storage/spec#unsupported-backend` | <dfn id="unsupported-backend">unsupported-backend</dfn> | 409 | A requested `backend` id is not in the space's [[[#space-backends-available]]] list. |
+| `https://wallet.storage/spec#invalid-import` | <dfn id="invalid-import">invalid-import</dfn> | 400 | An uploaded archive is not a valid WAS space export. |
+| `https://wallet.storage/spec#storage-error` | <dfn id="storage-error">storage-error</dfn> | 500 | An underlying storage operation failed. |
+| `https://wallet.storage/spec#internal-error` | <dfn id="internal-error">internal-error</dfn> | 500 | An unexpected server-side fault with no more specific kind. |
+
+**Privacy: the `not-found` kind is intentionally merged.** Under the principle
+of maximum privacy (see [[[#error-handling]]]), an unauthorized client MUST NOT
+be able to discover the existence of a Space, Collection, or Resource from an
+error response. The [=not-found=] kind therefore covers both
+"resource absent" and "invalid authorization"; implementations MUST NOT split
+it into distinguishable `type` values, and MUST NOT otherwise let the response
+(status code, `title`, or `detail`) reveal whether the resource exists.
 
 </section>
 
