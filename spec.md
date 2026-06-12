@@ -328,9 +328,9 @@ To create a Space:
     response
   * The capability invocation MUST be *authorized by* the body's `controller`:
     either signed directly by the `controller` DID (the common case), or signed
-    by another DID presenting a delegation chain rooted in the `controller`
-    (see [[[#delegation]]]). This is how the root of trust is initially set up
-    (see the [Space `controller` and the Root of
+    by another DID presenting a valid, unexpired delegation chain rooted in the
+    `controller` (see [[[#delegation]]]). This is how the root of trust is
+    initially set up (see the [Space `controller` and the Root of
     Trust](#space-controller-and-the-root-of-trust) section for more details).
   * The delegated form supports creating a Space *on behalf of* its eventual
     controller: for example, a provisioning service that handles payment or
@@ -394,9 +394,16 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
   missing from the request body.
 * [=missing-authorization=] (401) -- the request lacks a valid proof of
   possession of the `controller` DID.
-* [=controller-mismatch=] (400) -- the invocation is not authorized by the
-  `controller` DID in the request body: it is neither signed by that DID nor
-  accompanied by a delegation chain rooted in it.
+* [=controller-mismatch=] (400) -- the invocation is not *currently*
+  authorized by the `controller` DID in the request body: it is neither signed
+  by that DID nor accompanied by a valid, unexpired delegation chain rooted in
+  it. A chain rooted in a different DID, an expired delegation, and a chain
+  whose proof fails verification all fall under this one type; servers are not
+  required to distinguish them (delegation-chain verifiers often report
+  failure opaquely), but SHOULD differentiate the cause in the non-normative
+  `detail` string where they can -- in a delegated provisioning flow, the
+  cause determines who must act (the user re-delegates an expired capability;
+  the service corrects a request whose chain is rooted in the wrong DID).
 * [=invalid-id=] (400) -- the supplied Space `id` is not URL-safe (see
   [[[#identifiers]]]).
 * [=id-conflict=] (409) -- a Space with the supplied `id` already exists.
@@ -431,6 +438,17 @@ which governs errors about *existing* targets the caller is not authorized
 for. Unguessable (for example, UUID) Space ids keep the signal worthless to an
 attacker, and providers that gate Space creation behind onboarding requirements
 also bound who can observe it.
+</div>
+
+<div class="note">
+Differentiated `detail` strings on [=controller-mismatch=] are likewise
+privacy-safe: Create Space has no existing target to protect, and everything
+its verification examines -- the body's `controller`, the capability chain,
+its signatures -- is supplied by the caller, so failure granularity reveals
+nothing the caller does not already hold. This reasoning does *not* extend to
+failure causes that depend on server-side state (for example, capability
+revocation status or per-controller onboarding allowances); whether and how to
+disclose those remains provider-defined.
 </div>
 
 ### List Spaces Operation
@@ -586,8 +604,9 @@ Space, including transferring it by writing a new `controller`. The body's
 `controller` participates in verification only when the `PUT` creates the
 Space -- there is no stored controller yet, so, as with
 [[[#create-space-operation]]], the invocation MUST be authorized by the body's
-`controller`: signed by it directly, or presented with a delegation chain
-rooted in it. A server that verifies an *update* against the
+`controller`: signed by it directly, or presented with a valid, unexpired
+delegation chain rooted in it (violations are [=controller-mismatch=], as for
+POST). A server that verifies an *update* against the
 body's `controller` reopens the takeover described under
 [[[#create-space-errors]]]: any caller could seize an existing Space by
 PUTting its `id` with themselves as the `controller`.
@@ -2505,7 +2524,7 @@ status code depending on the operation.
 | `https://wallet.storage/spec#missing-content-type` | <dfn id="missing-content-type">missing-content-type</dfn> | 400 | A required `Content-Type` header is missing. |
 | `https://wallet.storage/spec#missing-authorization` | <dfn id="missing-authorization">missing-authorization</dfn> | 401 | Required `Authorization` / `Capability-Invocation` headers (or proof of possession) are missing. |
 | `https://wallet.storage/spec#invalid-authorization-header` | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn> | 400 | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification. |
-| `https://wallet.storage/spec#controller-mismatch` | <dfn id="controller-mismatch">controller-mismatch</dfn> | 400 | The capability invocation in a Create Space request is not authorized by the `controller` supplied in the request body: it is neither signed by that DID nor accompanied by a delegation chain rooted in it. |
+| `https://wallet.storage/spec#controller-mismatch` | <dfn id="controller-mismatch">controller-mismatch</dfn> | 400 | The capability invocation in a Create Space request is not currently authorized by the `controller` supplied in the request body: it is neither signed by that DID nor accompanied by a valid, unexpired delegation chain rooted in it. Servers SHOULD differentiate the cause (chain rooted elsewhere, expired delegation, failed proof) in the `detail` string where they can; see [[[#create-space-errors]]]. |
 | `https://wallet.storage/spec#unsupported-backend` | <dfn id="unsupported-backend">unsupported-backend</dfn> | 409 | A requested `backend` id is not in the space's [[[#space-backends-available]]] list. |
 | `https://wallet.storage/spec#quota-exceeded` | <dfn id="quota-exceeded">quota-exceeded</dfn> | 507 | A write was rejected because the target backend's storage quota is exhausted. See [[[#quotas]]]. |
 | `https://wallet.storage/spec#payload-too-large` | <dfn id="payload-too-large">payload-too-large</dfn> | 413 | An upload exceeds the target backend's `maxUploadBytes` constraint (see [[[#quotas]]]). Note that unlike [=quota-exceeded=], this rejection is per-request: smaller uploads may still succeed. |
@@ -2647,8 +2666,12 @@ Content-type: application/problem+json
 }
 ```
 
-[=controller-mismatch=] -- the invocation is not authorized by the DID
-specified in the `controller` property of a Create Space request body:
+[=controller-mismatch=] -- the invocation is not currently authorized by the
+DID specified in the `controller` property of a Create Space request body
+(the `detail` here is the generic catch-all; servers that can tell SHOULD name
+the specific cause instead, e.g. "The delegation chain is rooted in a DID
+other than the body's 'controller'." or "The delegated capability has
+expired."):
 
 ```http
 HTTP/1.1 400 Bad Request
