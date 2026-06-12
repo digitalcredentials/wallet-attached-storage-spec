@@ -1007,8 +1007,9 @@ Resource properties:
   via the [[[#list-collection-operation]]])
 * Each Resource also has an associated Metadata object -- server-managed
   properties (`contentType`, `size`, optional timestamps) plus user-writable
-  ones (`name`, `tags`) -- addressable at the reserved `/meta` path segment
-  under the Resource URL. See [[[#resource-metadata-data-model]]].
+  ones (`name` and `tags`, nested under `custom`) -- addressable at the
+  reserved `/meta` path segment under the Resource URL. See
+  [[[#resource-metadata-data-model]]].
 
 ### Content Types and Representations
 
@@ -1031,10 +1032,11 @@ error. The request body is interpreted according to its content type:
   `application/octet-stream`.
 * **Multipart upload** (support OPTIONAL) -- a server MAY additionally accept
   `multipart/form-data` [[RFC7578]] uploads (the HTML form workflow). The
-  request's file part supplies the stored bytes, and that part's own content
-  type (not `multipart/form-data`) becomes the stored content type. A
-  multipart request with no file part is rejected with an
-  [=invalid-request-body=] (400) error.
+  request MUST contain exactly one file part; that part supplies the stored
+  bytes, and its own content type (not `multipart/form-data`) becomes the
+  stored content type. Because a write targets a single Resource, there is no
+  batch form: a server MUST reject a multipart request with no file part, or
+  with more than one, with an [=invalid-request-body=] (400) error.
 
 **Reading.** A `GET` returns the current representation, verbatim, with the
 stored content type as the response `Content-Type`. Because Resources are
@@ -1110,7 +1112,8 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 * [=missing-content-type=] (400) -- the write request carries no
   `Content-Type` header (see [[[#content-types-and-representations]]]).
 * [=invalid-request-body=] (400) -- the body does not match its declared
-  content type (for example, a multipart upload with no file part).
+  content type (for example, a multipart upload with no file part, or with
+  more than one).
 * [=reserved-id=] (409) -- the supplied Resource `id` collides with one of the
   [[[#collection-level-reserved-endpoints]]] (for example, `query` or
   `linkset`).
@@ -1237,7 +1240,8 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 * [=missing-content-type=] (400) -- the write request carries no
   `Content-Type` header (see [[[#content-types-and-representations]]]).
 * [=invalid-request-body=] (400) -- the body does not match its declared
-  content type (for example, a multipart upload with no file part).
+  content type (for example, a multipart upload with no file part, or with
+  more than one).
 * [=reserved-id=] (409) -- the supplied Resource `id` collides with one of the
   [[[#collection-level-reserved-endpoints]]] (for example, `query` or
   `linkset`).
@@ -1296,14 +1300,17 @@ reserved `/meta` path segment under the Resource URL (one of the
 OPTIONAL; a [=server=] that does not implement them SHOULD return an
 [=unsupported-operation=] (501) error for requests to `/meta` paths.
 
-The Metadata object is a flat JSON document containing two groups of
+The Metadata object is a JSON document containing two groups of
 properties:
 
-* **Server-managed properties** are maintained by the server as a side
-  effect of Resource write operations. They are read-only: the
+* **Server-managed properties** appear at the top level of the Metadata
+  object. They are maintained by the server as a side effect of Resource
+  write operations and are read-only: the
   [[[#update-resource-metadata-operation]]] cannot change them.
-* **User-writable properties** are set by the client via the
-  [[[#update-resource-metadata-operation]]].
+* **User-writable properties** are nested under the `custom` property and
+  are set by the client via the [[[#update-resource-metadata-operation]]].
+  Keeping them in their own object makes the writable surface explicit and
+  leaves the top level free for future server-managed properties.
 
 Server-managed properties (`contentType` and `size` are REQUIRED in every
 Metadata object; the timestamps are OPTIONAL):
@@ -1330,21 +1337,25 @@ deliberately deferred. See also the concurrency-control note in Appendix
 
 User-writable properties:
 
-* `name` (optional) - A human-readable name for the Resource. This is the
-  same `name` property defined in the [[[#resource-data-model]]] and returned
-  by the [[[#list-collection-operation]]]; updating it here updates the name
-  shown in Collection listings.
-* `tags` (optional) - A JSON object of application-defined annotations. Keys
-  are strings chosen by the application; values SHOULD be strings, so that
-  tags stay cheap to index and filter on. Applications that need richer
-  structured metadata SHOULD store it as a Resource in its own right rather
-  than in `tags`.
+* `custom` (optional) - A JSON object holding the user-writable properties
+  below. A Metadata object with no user-writable properties set MAY omit
+  `custom` or report it as `{}`.
+  * `name` (optional) - A human-readable name for the Resource. This is the
+    same `name` property defined in the [[[#resource-data-model]]] and
+    returned by the [[[#list-collection-operation]]]; updating it here
+    updates the name shown in Collection listings.
+  * `tags` (optional) - A JSON object of application-defined annotations.
+    Keys are strings chosen by the application; values SHOULD be strings, so
+    that tags stay cheap to index and filter on. Applications that need
+    richer structured metadata SHOULD store it as a Resource in its own
+    right rather than in `tags`.
 
 A Resource's Metadata object is created and deleted together with the
 Resource itself: it comes into existence (with only server-managed
 properties) when the Resource is created, and is removed when the Resource is
 deleted. There is no `DELETE /meta` operation; to clear the user-writable
-properties, send a `PUT` with an empty object (`{}`).
+properties, send a `PUT` with an empty `custom` object (`{ "custom": {} }`)
+or an empty body object (`{}`).
 
 ### Read Resource Metadata Operation
 
@@ -1376,8 +1387,10 @@ Content-type: application/json
   "size": 16,
   "createdAt": "2026-06-10T09:12:00Z",
   "updatedAt": "2026-06-12T13:25:00Z",
-  "name": "Hello World greeting",
-  "tags": { "project": "demo", "status": "draft" }
+  "custom": {
+    "name": "Hello World greeting",
+    "tags": { "project": "demo", "status": "draft" }
+  }
 }
 ```
 
@@ -1392,12 +1405,14 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 
 ### Update Resource Metadata Operation
 
-A `PUT` to the `/meta` endpoint is a _full_ replacement of the
-**user-writable** group of properties: any user-writable property omitted
-from the request body is cleared. Server-managed properties are not affected
-by this operation; a server MUST ignore any server-managed properties present
-in the request body (so that a client may read the Metadata object, modify
-it, and `PUT` it back without first stripping the server-managed properties).
+A `PUT` to the `/meta` endpoint is a _full_ replacement of the Metadata
+object's `custom` object: the stored `custom` object is replaced by the one
+in the request body, so any user-writable property omitted from it is
+cleared (and a request body with no `custom` property clears them all).
+Server-managed properties are not affected by this operation; a server MUST
+ignore any top-level properties other than `custom` present in the request
+body (so that a client may read the Metadata object, modify it, and `PUT`
+it back without first stripping the server-managed properties).
 
 Unlike the [[[#update-or-create-by-id-resource-operation]]], a `PUT` to
 `/meta` does **not** create anything: a Metadata object cannot exist apart
@@ -1423,8 +1438,10 @@ Content-Type: application/json
 Authorization: ...
 
 {
-  "name": "Hello World greeting",
-  "tags": { "project": "demo", "status": "draft" }
+  "custom": {
+    "name": "Hello World greeting",
+    "tags": { "project": "demo", "status": "draft" }
+  }
 }
 ```
 
@@ -1440,8 +1457,8 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
   create one), **or** the caller has missing or insufficient authorization,
   per [[[#error-handling]]].
 * [=invalid-request-body=] (400) -- the request body is not a JSON object, or
-  a user-writable property does not have the shape described in
-  [[[#resource-metadata-data-model]]].
+  the `custom` object (or a property within it) does not have the shape
+  described in [[[#resource-metadata-data-model]]].
 * [=unsupported-operation=] (501) -- the server does not implement the
   optional metadata endpoints.
 
@@ -1451,8 +1468,8 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 
 ### Identifier Required Properties
 
-Space, Collection and Resource identifiers used in this specification are required
-to have the following properties.
+Space, Collection, and Resource identifiers used in this specification are
+required to have the following properties.
 
 1. **URL-safety** - All characters in a given identifier MUST be URL-safe.
 2. **Uniqueness** - All identifiers MUST be unique within a given container.
