@@ -195,6 +195,26 @@ any authorization in the request itself, or possessing insufficient permissions)
 MUST NOT be able to discover the existence of a resource based on the error
 response.
 
+This privacy rule governs failures that would otherwise reveal whether a target
+*exists*. It does not require masking failures that describe the *request
+itself*:
+
+* **Request and credential validation** failures: a malformed or missing
+  request body, a missing `Content-Type`, or a capability invocation or
+  signature that is present but malformed or fails to verify -- MAY be reported
+  with precise status codes and `type`s (for example [=invalid-request-body=],
+  [=missing-content-type=], [=invalid-authorization-header=], or
+  [=controller-mismatch=]). These responses describe the request and do not
+  disclose whether any particular target exists.
+* **Authorization** failures against an existing target: a well-formed request
+  that simply lacks sufficient privilege, including one that carries no
+  authorization at all, MUST be reported as [=not-found=] (HTTP 404),
+  indistinguishable from the target being absent.
+
+"List Spaces" operations are an exception to 404 masking: rather than returning
+an error, they return `200 OK` with only the subset of items the caller is
+authorized to see (an empty `items` array if none) -- see [[[#list-spaces-operation]]].
+
 ### Caching
 
 TODO: Add caching semantics section.
@@ -210,6 +230,13 @@ operations.
 ## Terminology
 
 <dl class="termlist definitions" data-sort="ascending">
+  <dt><dfn data-lt="action|actions|allowedAction">action (allowedAction)</dfn></dt>
+  <dd>The kind of operation a request performs on a target, named by a capability
+    so it can be authorized. WAS uses the uppercase HTTP method names
+    (<a>GET</a>, <a>POST</a>, <a>PUT</a>, <a>DELETE</a>) as its action
+    vocabulary. See section
+    [[[#authorization-actions-and-the-root-capability]]].</dd>
+
   <dt><dfn data-lt="collections">collection</dfn></dt>
   <dd>A namespace and configuration container for resources. Conceptually maps
     to folders (for file system like storage), buckets (for object storage), or
@@ -224,6 +251,17 @@ operations.
   <dt><dfn data-lt="server|servers|instance|instances">instance, server</dfn></dt>
   <dd>A deployed instance of an application or service that implements this
     specification's API.</dd>
+
+  <dt><dfn data-lt="root capabilities|root zcap">root capability</dfn></dt>
+  <dd>The implied capability for a [=target=] whose [=controller=] is the Space's
+    controller; it is the root of trust from which all other capabilities for
+    that target are delegated. See section [[[#root-capability]]].</dd>
+
+  <dt><dfn data-lt="target|invocationTarget|targets">target (invocationTarget)</dfn></dt>
+  <dd>The resource a request acts on -- the full request URL (scheme, host, port,
+    and path) -- and the scope a capability authorizes. A capability's
+    `invocationTarget` MUST match the request target for the invocation to be
+    valid. See section [[[#authorization-actions-and-the-root-capability]]].</dd>
 
   <dt><dfn data-lt="zcap|zCaps|capability|authorization capability">zCap (Authorization Capability)</dfn></dt>
   <dd>See [zCap Developer Guide](https://interop-alliance.github.io/zcap-developer-guide/) for more
@@ -439,11 +477,33 @@ Content-Language: en
 }
 ```
 
-Example error response (missing or insufficient onboarding material provided):
+Onboarding requirements, if any, are provider-specific and out of scope for this
+specification (see the optional onboarding material above). Their error `type`,
+`title`, and status code are likewise provider-defined.
 
 Example error response (invalid `id` provided):
 
-Example error response (a space with the specified `id` already exists):
+```http
+HTTP/1.1 400 Bad Request
+Content-type: application/problem+json
+Content-Language: en
+
+{
+  "type": "https://wallet.storage/spec#invalid-id",
+  "title": "Invalid Create Space id.",
+  "errors": [
+    {
+      "detail": "Space 'id' must be URL-safe.",
+      "pointer": "#/id"
+    }
+  ]
+}
+```
+
+The `POST /spaces/` operation is for server-assigned identifiers. To create or
+replace a Space at a client-chosen `id`, use the idempotent
+[[[#update-or-create-by-id-space-operation]]] instead, which (subject to
+authorization) replaces an existing Space rather than reporting a conflict.
 
 ### List Spaces Operation
 
@@ -494,7 +554,10 @@ Content-type: application/json
 }
 ```
 
-Example error response (missing authorization):
+A request that carries no authorization (or authorization for no spaces) is not
+an error: like any list operation it returns the `200 OK` empty-list response
+shown above, revealing nothing about which spaces exist (see
+[[[#error-handling]]]).
 
 ## Spaces
 
@@ -511,7 +574,9 @@ Conceptually, is maps to a disk partition (for file systems), or a database
   server if not provided. Note: the `{space_id}` template parameter used in URL
   templates in this spec MUST match that space's `id` property. See Appendix
   [[[#identifiers]]] for additional constraints.
-* `type` - A sorted array of strings, MUST include the type `Space`.
+* `type` - An array of strings, MUST include the type `Space`. The array SHOULD
+  be lexically sorted so that the object has a canonical, stable serialization
+  (useful for hashing or signing).
 * `name` (optional) - An arbitrary human-readable name for the space. Does not
   have to be unique.
 * `controller` - A cryptographic identifier (a [=did=])
@@ -639,7 +704,9 @@ Content-type: application/json
 Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e
 ```
 
-Example request (updating the `name` and `linkset` properties of a space):
+Example request (updating the `name` property of a space). Note that
+server-managed properties such as `url` and `linkset` are not client-writable
+and are omitted from the request body:
 
 ```http
 PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e HTTP/1.1
@@ -652,8 +719,7 @@ Authorization: ...
   "id": "81246131-69a4-45ab-9bff-9c946b59cf2e",
   "type": ["Space"],
   "name": "Newly renamed space #1",
-  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW",
-  "linkset": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/linkset"
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
 }
 ```
 
@@ -663,10 +729,37 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-Example error response (missing or invalid authorization):
+Example error response (missing or insufficient authorization). Per
+[[[#error-handling]]], this is indistinguishable from the space not existing:
 
-Example error response (client is attempting to change an immutable field like
-the space `id`):
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#not-found",
+  "title": "Space not found or insufficient authorization."
+}
+```
+
+Example error response (client is attempting to change an immutable field, such
+as setting a body `id` that does not match the `{space_id}` in the URL):
+
+```http
+HTTP/1.1 400 Bad Request
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#invalid-request-body",
+  "title": "Invalid Update Space body.",
+  "errors": [
+    {
+      "detail": "Body 'id' must match the space id in the request URL.",
+      "pointer": "#/id"
+    }
+  ]
+}
+```
 
 ### Delete Space operation
 
@@ -693,9 +786,36 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-Example error response (missing or invalid authorization):
+Example error response (missing or insufficient authorization). Per
+[[[#error-handling]]], this is indistinguishable from the space not existing:
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#not-found",
+  "title": "Space not found or insufficient authorization."
+}
+```
 
 Example error response (invalid `id` provided):
+
+```http
+HTTP/1.1 400 Bad Request
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#invalid-id",
+  "title": "Invalid Space id.",
+  "errors": [
+    {
+      "detail": "Space 'id' must be URL-safe.",
+      "pointer": "#/id"
+    }
+  ]
+}
+```
 
 ### List All Collections operation
 
@@ -769,7 +889,9 @@ Collection properties (user-writable):
   server if not provided. Note: the `{collection_id}` template parameter used in
   URL templates in this spec MUST match that collection's `id` property.
   See Appendix [[[#identifiers]]] for additional constraints.
-* `type` - A sorted array of strings, MUST include the type `Collection`.
+* `type` - An array of strings, MUST include the type `Collection`. As with a
+  Space's `type`, the array SHOULD be lexically sorted for a canonical, stable
+  serialization.
 * `name` (optional) - An arbitrary human-readable name for the collection. Does not
   have to be unique.
 * `backend` (optional) - An object describing the storage backend selected for
@@ -1106,6 +1228,8 @@ Resource properties:
   the [[[#list-collection-operation]]]).
 * `name` - (optional) - Human-readable name for the resource, useful for building
   user interfaces for browsing collection contents.
+* `type` (optional) - An array of strings describing the resource. Unlike Space
+  and Collection, no specific `type` value is required of a Resource.
 * `url` (optional) - A relative URL (provided by the server when listing resources
   via the [[[#list-collection-operation]]])
 * `contentType` (optional) - The MIME type of the default representation of the
@@ -1195,8 +1319,19 @@ Content-type: application/json
 {"message":"hi"}
 ```
 
-* TODO: Add example 404 error response where a missing or invalid resource is
-  specified, or if the request carries insufficient or missing authorization
+Example error response (missing or invalid resource, or insufficient
+authorization). Per [[[#error-handling]]], a resource the caller is not
+authorized to read is indistinguishable from one that does not exist:
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#not-found",
+  "title": "Resource not found or insufficient authorization."
+}
+```
 
 ### Update (or Create By Id) Resource Operation
 
@@ -1275,9 +1410,19 @@ Content-type: application/problem+json
 }
 ```
 
-* TODO: Add an example 404 error response where a missing or invalid space or
-  collection is specified, or if the request carries insufficient or missing
-  authorization
+Example error response (missing or invalid space or collection, or insufficient
+authorization). Per [[[#error-handling]]], an under-authorized request is
+indistinguishable from a missing target:
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#not-found",
+  "title": "Resource not found or insufficient authorization."
+}
+```
 
 ### Delete Resource Operation
 
@@ -1309,8 +1454,20 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-* TODO: Add an example 404 error response if the request carries insufficient or
-  missing authorization
+Example error response (missing or insufficient authorization). Because DELETE is
+idempotent, an authorized request for an already-absent resource returns `204`;
+a request that lacks sufficient authorization instead returns `404`, per
+[[[#error-handling]]], so that an unauthorized caller cannot probe for existence:
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#not-found",
+  "title": "Resource not found or insufficient authorization."
+}
+```
 
 <section class="appendix">
 
@@ -1532,7 +1689,9 @@ The initial W.A.S. Authorization Profile uses the following specifications.
 4. Proof of Possession / authorization invocation: HTTP Signatures.
    MUST - [RFC 9421 HTTP Message Signatures](https://www.rfc-editor.org/rfc/rfc9421.html),
    MAY - [HTTP Signatures (Cavage draft 12)](https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures)
-5. Access Control / Policy language data model: TBD
+5. Access Control / Policy language data model: see
+   [[[#access-control-policies]]] (`PublicCanRead` is the only normative type for
+   v0.1)
 
 ### Space `controller` and the Root of Trust
 
@@ -1575,10 +1734,82 @@ all W.A.S. API calls require authorization.
 This can be done in one of two ways:
 
 1. (for admin-like root access) Use the `controller` DID directly to sign
-   HTTP API requests using the HTTP Signatures specification.
+   HTTP API requests using the HTTP Signatures specification, invoking the
+   target's [=root capability=].
 2. (for advanced delegatable use cases) Use HTTP Signatures in combination
    with [Authorization Capabilities v0.3](https://w3c-ccg.github.io/zcap-spec/),
    and include a capability invocation header in the API request.
+
+### Authorization Actions and the Root Capability
+
+A capability invocation names an [=action=] that the invoked capability must
+permit. WAS uses the uppercase HTTP method names as its action vocabulary:
+
+* <dfn id="get-action">`GET`</dfn> -- read a Space, Collection, or Resource. A
+  `HEAD` request is authorized as a `GET`.
+* <dfn id="post-action">`POST`</dfn> -- create a child item in a container (add a
+  Resource to a Collection, a Collection to a Space, or a Space to the Spaces
+  Repository).
+* <dfn id="put-action">`PUT`</dfn> -- create-by-id or replace a Space,
+  Collection, or Resource.
+* <dfn id="delete-action">`DELETE`</dfn> -- delete a Space, Collection, or
+  Resource.
+
+A request is authorized by a capability when all the following hold:
+
+1. the capability's `invocationTarget` matches the request's [=target=] -- the
+   full request URL (scheme, host, port, and path);
+2. the capability's `allowedAction` includes the request's action (the HTTP
+   method); and
+3. the invocation is signed by a key the capability authorizes, carried as a
+   valid HTTP Signature over the request (see
+   [[[#performing-authorized-api-calls]]]).
+
+#### Root Capability
+
+Every [=target=] has an implied **root capability** whose `controller` is the
+Space's [=controller=]. It is identified by the URI `urn:zcap:root:` followed by
+the percent-encoded target URL:
+
+```json
+{
+  "@context": "https://w3id.org/zcap/v1",
+  "id": "urn:zcap:root:https%3A%2F%2Fexample.com%2Fspace%2F81246131-69a4-45ab-9bff-9c946b59cf2e%2Fmessages%2Fhello-world",
+  "invocationTarget": "https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world",
+  "controller": "did:key:z6MkpBMbMaRSv5nsgifRAwEKvHHoiKDMhiAHShTFNmkJNdVW"
+}
+```
+
+The Space [=controller=] MAY invoke the root capability directly -- signing the
+request with a key listed in the `capabilityInvocation` section of the
+controller's DID document -- to perform any operation. This is the "root access"
+path. All other authorized access derives from a capability delegated, directly
+or transitively, from this root.
+
+#### Delegation
+
+To grant another agent access, the [=controller=] (or any agent holding a
+sufficiently broad capability) delegates a capability that names the grantee as
+its new `controller`, the `invocationTarget` to scope it to, and the
+`allowedAction`s to permit. A delegation MAY set an `expires` time. For example,
+granting another DID read-only access to a single Collection:
+
+```json
+{
+  "@context": "https://w3id.org/zcap/v1",
+  "id": "urn:uuid:6c9f3a1e-2b4d-4f8a-9c1e-7d2b3a4c5e6f",
+  "parentCapability": "urn:zcap:root:https%3A%2F%2Fexample.com%2Fspace%2F81246131-69a4-45ab-9bff-9c946b59cf2e%2Fmessages%2F",
+  "invocationTarget": "https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/",
+  "controller": "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK",
+  "allowedAction": ["GET"],
+  "expires": "2026-12-31T23:59:59Z",
+  "proof": { "...": "delegation proof signed by the parent capability's controller" }
+}
+```
+
+The delegated capability is handed to the recipient out of band. The recipient
+invokes it by signing a request with their own key and including the capability
+in the `Capability-Invocation` header.
 
 ### Specifying Access Policy With Space Link Sets
 
@@ -1628,6 +1859,50 @@ Content-type: application/json
 
 { "type": "PublicCanRead" }
 ```
+
+### Access Control Policies
+
+Capabilities answer the question "does the caller hold a credential that grants
+this action?" Access control *policies* answer the complementary question
+"does this target grant this action to callers in general (or to a named set of
+principals)?" Policies are how a [=controller=] makes a target public-readable
+(or, in future profiles, shares it with a list of people or groups) without
+having to issue a capability to each caller.
+
+A policy is a JSON document with a required `type` property, stored at the
+[=policy=] auxiliary resource of a Space, Collection, or Resource and
+discoverable via the [=policy=] linkset relation (see [[[#space-linkset]]] and
+[[[#collection-linkset]]]).
+
+**Evaluation contract:**
+
+* **Capability first, policy second.** A request is first checked against any
+  capability invocation it carries. The effective policy is consulted only as a
+  fallback, and it can only **broaden** access -- a policy never denies a caller
+  who presents a valid capability.
+* **Fail-closed.** An absent policy, or a policy whose `type` an implementation
+  does not recognize, grants nothing.
+* **Most-specific-wins inheritance.** The effective policy for a target is the
+  one set at the most specific level that has a policy document: a Resource
+  policy overrides a Collection policy, which overrides a Space policy.
+* **Access kind.** For policy evaluation, the request action is reduced to a
+  coarse access kind: [=GET=] (and `HEAD`) is a `read`; [=POST=], [=PUT=], and
+  [=DELETE=] are a `write`.
+
+#### `PublicCanRead`
+
+For v0.1, the only normative policy `type` is `PublicCanRead`:
+
+```json
+{ "type": "PublicCanRead" }
+```
+
+It grants the `read` access kind to any caller (including unauthenticated ones)
+and grants no write access. This is the canonical "public read" pattern -- for
+example, hosting an HTML file or an image that anyone may `GET`, while writes
+still require a capability. Setting it on a Space makes the whole Space
+public-readable (subject to any more specific Collection or Resource policy);
+setting it on a single Resource exposes only that Resource.
 </section>
 
 <section class="appendix">
@@ -1834,6 +2109,11 @@ error response. The [=not-found=] kind therefore covers both
 "resource absent" and "invalid authorization"; implementations MUST NOT split
 it into distinguishable `type` values, and MUST NOT otherwise let the response
 (status code, `title`, or `detail`) reveal whether the resource exists.
+
+This merging applies to "insufficient-authorization" and "absent-authorization"
+against an existing target. It does not apply to request- or
+credential-validation failures, which describe the request rather than the
+target and so MAY use their own precise `type`s -- see [[[#error-handling]]].
 
 </section>
 
