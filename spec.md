@@ -166,7 +166,8 @@ Required if Space endpoints or Collection endpoints are supported.
 [[[#backends]]]):
 
 * `GET /space/{space_id}/backends` - Get the list of available backends for a Space
-* `GET /space/{space_id}/quotas` - Get the Quota report object, grouped by available Backend
+* `GET /space/{space_id}/quotas` - Get the Quota report object, grouped by available
+  Backend (add `?include=collections` for a per-collection usage breakdown)
 * `GET /space/{space_id}/{collection_id}/backend` - Get the detailed backend object for a Collection
   (the backend summary will also be displayed in the Collection description object)
 * `GET /space/{space_id}/{collection_id}/quota` - Get the Quota report object for
@@ -1033,6 +1034,10 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 * [=id-conflict=] (409) -- a Resource with the supplied `id` already exists.
   To create or replace a Resource at a client-chosen `id` without conflict,
   use the idempotent [[[#update-or-create-by-id-resource-operation]]] instead.
+* [=quota-exceeded=] (507) -- the Collection's backend has no storage quota
+  remaining (see [[[#quotas]]]).
+* [=payload-too-large=] (413) -- the upload exceeds the backend's
+  `maxUploadBytes` constraint (see [[[#quotas]]]).
 
 ### Read Resource Operation
 
@@ -1129,6 +1134,10 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
   invalid, **or** the caller has missing or insufficient authorization; per
   [[[#error-handling]]] an under-authorized request is indistinguishable from a
   missing target.
+* [=quota-exceeded=] (507) -- the Collection's backend has no storage quota
+  remaining (see [[[#quotas]]]).
+* [=payload-too-large=] (413) -- the upload exceeds the backend's
+  `maxUploadBytes` constraint (see [[[#quotas]]]).
 
 ### Delete Resource Operation
 
@@ -1626,6 +1635,9 @@ resources and extension points:
 * <dfn id="backends-available">`backends-available`</dfn>
   (`https://wallet.storage/spec#backends-available`) - A link to the
   `/space/{space_id}/backends` "Backends Available" resource.
+* <dfn id="quotas-rel">`quotas`</dfn> (`https://wallet.storage/spec#quotas`) -
+  A link to the `/space/{space_id}/quotas` per-backend storage quota report
+  (see [[[#quotas]]]).
 * `/space/{space_id}/query` - Reserved for cross-space query operations.
 
 Example space linkset resource request and response:
@@ -1657,6 +1669,12 @@ Content-type: application/linkset+json
           "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/backends",
           "type": "application/json"
         }
+      ],
+      "https://wallet.storage/spec#quotas": [
+        {
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/quotas",
+          "type": "application/json"
+        }
       ]
     }
   ]
@@ -1675,6 +1693,9 @@ to auxiliary resources and extension points:
 * <dfn id="backend">`backend`</dfn> (`https://wallet.storage/spec#backend`) - A link to the
   detailed `/space/{space_id}/{collection_id}/backend` "Backend Selected for this
   collection" resource.
+* <dfn id="quota-rel">`quota`</dfn> (`https://wallet.storage/spec#quota`) - A
+  link to the `/space/{space_id}/{collection_id}/quota` storage quota report
+  for this collection (see [[[#quotas]]]).
 * `/space/{space_id}/{collection_id}/query` - (Optional) Reserved for query
   operations within a collection.
 
@@ -1705,6 +1726,12 @@ Content-type: application/linkset+json
       "https://wallet.storage/spec#backend": [
         {
           "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/backend",
+          "type": "application/json"
+        }
+      ],
+      "https://wallet.storage/spec#quota": [
+        {
+          "href": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/quota",
           "type": "application/json"
         }
       ]
@@ -1740,6 +1767,43 @@ An implementer or client of a given server can omit the `backend` property when
 creating a Collection. By default, if not specified, all Collections are
 assigned the `default` backend.
 
+### Backend Data Model
+
+A Backend description object advertises a backend's identity and capabilities,
+so that clients can select a suitable backend for each Collection (and so that
+storage management UIs can present meaningful choices to users).
+
+Backend description properties:
+
+* `id` (required) - A unique backend identifier (within a given space). The id
+  `default` is conventionally used for the server-assigned default backend.
+  See Appendix [[[#identifiers]]] for additional constraints.
+* `name` (optional) - An arbitrary human-readable name for the backend. Does
+  not have to be unique.
+* `managedBy` (optional) - Who operates the backend. One of:
+  - `server` - configured and operated server-side (for example, the server's
+    filesystem or database backends). This is the default if unspecified.
+  - `external` - a "Bring Your Own Storage" provider registered by the client
+    (for example, a connected Dropbox account).
+* `storageMode` (optional) - An array of storage modalities the backend
+  supports. This specification defines two values: `document` (structured JSON
+  resources) and `blob` (opaque binary byte streams). Advertising modalities up
+  front prevents mismatches, such as attempting to store a multi-gigabyte
+  binary file on a JSON-only document store. If unspecified, clients SHOULD
+  assume both modalities are supported.
+* `persistence` (optional) - Either `durable` (the engine stores data on
+  persistent media, e.g. disk, and it survives a restart) or `volatile` (the
+  engine stores data in memory, e.g. a RAM-backed cache tier, and data may not
+  survive a restart). Defaults to `durable`. Note that this is a _technical_ property of the storage engine,
+  deliberately distinct from any _administrative_ data-retention rules (see the
+  editor's note on lifecycle configuration below).
+
+<div class="ednote">
+The schema of a backend's connection configuration (server-internal
+connections vs OAuth-style setup flows for external providers) is not yet
+specified.
+</div>
+
 ### Space Backends Available
 
 Example request:
@@ -1757,9 +1821,27 @@ HTTP/1.1 200 OK
 Content-type: application/json
 
 [
-  { "id": "default" },
-  { "id": "dropbox" },
-  { "id": "edv" }
+  {
+    "id": "default",
+    "name": "Server Filesystem",
+    "managedBy": "server",
+    "storageMode": ["document", "blob"],
+    "persistence": "durable"
+  },
+  {
+    "id": "dropbox",
+    "name": "Dropbox",
+    "managedBy": "external",
+    "storageMode": ["blob"],
+    "persistence": "durable"
+  },
+  {
+    "id": "edv",
+    "name": "Encrypted Data Vault",
+    "managedBy": "server",
+    "storageMode": ["document", "blob"],
+    "persistence": "durable"
+  }
 ]
 ```
 
@@ -1769,13 +1851,171 @@ Each collection has an optional `backend` property that is set during its creati
 (see [[[#collection-data-model]]]). If not specified, it is assumed to have the
 `id` of `default`.
 
+<div class="ednote">
+**Replicas (planned generalization).** The single `backend` property is
+expected to generalize to one or more _replicas_ per Collection, each replica
+hosted on a backend, with the current single-backend configuration as the
+degenerate one-replica case. (Collections do not "live" on a single backend;
+backends are infrastructure endpoints, not a fourth tier of the storage
+hierarchy.) That generalization will bring with it:
+
+* Client-evaluated replica roles (`active` vs `available`) -- this
+  specification will define the vocabulary for declaring replica topology;
+  the logic for _selecting_ the active replica (based on latency, battery,
+  network status) belongs to the client SDK.
+* A sync-status vocabulary per replica (e.g. `synced`, `syncing`, `stale`);
+  the exact state machine, including how "cold boots" of `volatile` backends
+  are surfaced, is to be determined.
+* A Collection-level `storageMode` declaration, validated against each
+  replica's backend at creation time.
+* Logical vs physical byte accounting in quota reports: the deduplicated size
+  of the user's data vs the total bytes consumed across all replicas. These
+  only diverge once replication exists, so the [[[#quotas]]] report currently
+  carries plain per-backend usage.
+* Concurrency control (`If-Match` ETags) for updates to replica topology,
+  tied to the broader conditional-writes design that is deliberately deferred.
+</div>
+
+<div class="ednote">
+**Lifecycle configuration (administrative retention).** Retention rules such
+as "delete guest data after one hour" (a time-to-live, a grace period, and an
+expiry action) are expected to be configurable at the Space or Collection
+level. Lifecycle configuration is deliberately distinct from both the
+backend's `persistence` property (a technical attribute of the storage engine)
+and from access-control [=policy=] (who may act on the data). The property
+naming is to be determined, precisely to avoid overloading the term "policy".
+</div>
+
 ### Quotas
 
-TODO: Add quota reporting semantics. Some Backends support quota limit
-enforcement; where supported, a per-Space quota report (grouped by backend) is
-available at `GET /space/{space_id}/quotas`, and a per-Collection report at
-`GET /space/{space_id}/{collection_id}/quota` (not all Backends support
-per-collection quotas).
+Quota reporting and enforcement are **optional**, and support is
+backend-dependent. A _quota_ is a storage limit enforced per backend; _usage_
+is a measurement of the storage consumed. The quota API serves two distinct
+consumers:
+
+* The **hot path**: applications checking whether they have room to write,
+  served by a compact per-backend report.
+* The **admin path**: storage-manager applications that need a per-collection
+  usage breakdown, served by the same endpoint with an `include` query
+  parameter.
+
+Quota endpoints follow the same maximum-privacy invariant as the rest of this
+specification (see [[[#error-handling]]]): a caller not authorized to read a
+Space's quota report MUST receive a [=not-found=] (404) error, never a 403.
+
+#### (HTTP API) GET `/space/{space_id}/quotas`
+
+Returns the storage report for a Space, grouped by backend. Each entry in the
+`backends` array carries:
+
+* `id`, `name`, `managedBy` - identifying properties from the corresponding
+  Backend description object (see [[[#backend-data-model]]]).
+* `state` - the backend's current condition, one of: `ok`, `near-limit`,
+  `over-quota`, or `unreachable`.
+* `usageBytes` - total bytes consumed on this backend by this Space.
+* `limit` - an object with `capacityBytes` and an `isUnlimited` boolean (when
+  `isUnlimited` is `true`, `capacityBytes` MAY be omitted).
+* `constraints` (optional) - operational constraints such as
+  `maxUploadBytes`, the largest single upload the backend accepts.
+* `restrictedActions` - an array of [=actions=] (uppercase HTTP verbs, the
+  same vocabulary as the WAS Authorization Profile, see
+  [[[#authorization-actions-and-the-root-capability]]]) currently unavailable
+  on this backend. For example, a full backend reports `["POST", "PUT"]`
+  while still permitting reads and deletes.
+* `measuredAt` - when the usage numbers were measured. For `external`
+  ("Bring Your Own Storage") backends, the server proxies the provider's
+  reported numbers, which may be cached or stale; `measuredAt` lets clients
+  judge freshness independently of the report's top-level `respondedAt`.
+
+Example request:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/quotas HTTP/1.1
+Accept: application/json
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "respondedAt": "2026-06-12T13:25:00Z",
+  "backends": [
+    {
+      "id": "default",
+      "name": "Server Filesystem",
+      "managedBy": "server",
+      "state": "ok",
+      "usageBytes": 524288000,
+      "limit": { "capacityBytes": 10737418240, "isUnlimited": false },
+      "restrictedActions": [],
+      "measuredAt": "2026-06-12T13:25:00Z"
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "managedBy": "external",
+      "state": "near-limit",
+      "usageBytes": 314572800,
+      "limit": { "capacityBytes": 367001600, "isUnlimited": false },
+      "constraints": { "maxUploadBytes": 157286400 },
+      "restrictedActions": [],
+      "measuredAt": "2026-06-12T13:24:45Z"
+    }
+  ]
+}
+```
+
+#### (HTTP API) GET `/space/{space_id}/quotas?include=collections`
+
+With the `include=collections` query parameter, each backend entry
+additionally carries a `usageByCollection` array, giving storage-manager
+applications a full breakdown in a single request while keeping the hot-path
+payload lean:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "respondedAt": "2026-06-12T13:25:00Z",
+  "backends": [
+    {
+      "id": "default",
+      "name": "Server Filesystem",
+      "managedBy": "server",
+      "state": "ok",
+      "usageBytes": 524288000,
+      "limit": { "capacityBytes": 10737418240, "isUnlimited": false },
+      "restrictedActions": [],
+      "measuredAt": "2026-06-12T13:25:00Z",
+      "usageByCollection": [
+        { "id": "credentials", "usageBytes": 419430400 },
+        { "id": "inbox", "usageBytes": 104857600 }
+      ]
+    }
+  ]
+}
+```
+
+#### (HTTP API) GET `/space/{space_id}/{collection_id}/quota`
+
+Returns the storage report for a single Collection, scoped to that
+Collection's backend (the entry has the same shape as a `backends` array
+entry, with `usageBytes` reflecting only this Collection's consumption).
+
+Not all backends support per-collection accounting. Where unsupported, the
+server returns an [=unsupported-operation=] (501) error.
+
+Errors (see [[[#error-type-registry]]] for canonical examples):
+
+* [=not-found=] (404) -- the Space or Collection does not exist, or the caller
+  is not authorized to read the quota report.
+* [=unsupported-operation=] (501) -- the Collection's backend does not support
+  per-collection quota accounting.
 
 </section>
 
@@ -1862,6 +2102,9 @@ status code depending on the operation.
 | `https://wallet.storage/spec#invalid-authorization-header` | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn> | 400 | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification. |
 | `https://wallet.storage/spec#controller-mismatch` | <dfn id="controller-mismatch">controller-mismatch</dfn> | 400 | The DID that signed the capability invocation does not match the `controller` supplied in a Create Space request body. |
 | `https://wallet.storage/spec#unsupported-backend` | <dfn id="unsupported-backend">unsupported-backend</dfn> | 409 | A requested `backend` id is not in the space's [[[#space-backends-available]]] list. |
+| `https://wallet.storage/spec#quota-exceeded` | <dfn id="quota-exceeded">quota-exceeded</dfn> | 507 | A write was rejected because the target backend's storage quota is exhausted. See [[[#quotas]]]. |
+| `https://wallet.storage/spec#payload-too-large` | <dfn id="payload-too-large">payload-too-large</dfn> | 413 | An upload exceeds the target backend's `maxUploadBytes` constraint (see [[[#quotas]]]). Note that unlike [=quota-exceeded=], this rejection is per-request: smaller uploads may still succeed. |
+| `https://wallet.storage/spec#unsupported-operation` | <dfn id="unsupported-operation">unsupported-operation</dfn> | 501 | An optional operation that this server or the target backend does not support (for example, a per-collection quota report on a backend without per-collection accounting). |
 | `https://wallet.storage/spec#invalid-import` | <dfn id="invalid-import">invalid-import</dfn> | 400 | An uploaded archive is not a valid WAS space export. |
 | `https://wallet.storage/spec#storage-error` | <dfn id="storage-error">storage-error</dfn> | 500 | An underlying storage operation failed. |
 | `https://wallet.storage/spec#internal-error` | <dfn id="internal-error">internal-error</dfn> | 500 | An unexpected server-side fault with no more specific kind. |
@@ -2020,6 +2263,50 @@ Content-type: application/problem+json
 {
   "type": "https://wallet.storage/spec#unsupported-backend",
   "title": "Unsupported backend id, check the space's 'backends available' list."
+}
+```
+
+[=quota-exceeded=] -- a write rejected because the target backend's storage
+quota is exhausted (see [[[#quotas]]]):
+
+```http
+HTTP/1.1 507 Insufficient Storage
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#quota-exceeded",
+  "title": "Storage quota exceeded for backend 'default'."
+}
+```
+
+[=payload-too-large=] -- an upload exceeding the target backend's
+`maxUploadBytes` constraint:
+
+```http
+HTTP/1.1 413 Content Too Large
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#payload-too-large",
+  "title": "Upload exceeds the backend's maximum upload size.",
+  "errors": [
+    {
+      "detail": "Upload size 209715200 exceeds 'maxUploadBytes' of 157286400 for backend 'dropbox'."
+    }
+  ]
+}
+```
+
+[=unsupported-operation=] -- an optional operation this server or backend does
+not support (here, a per-collection quota report):
+
+```http
+HTTP/1.1 501 Not Implemented
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#unsupported-operation",
+  "title": "Backend 'default' does not support per-collection quota reports."
 }
 ```
 
