@@ -162,7 +162,8 @@ Required if Space endpoints or Collection endpoints are supported.
 * `POST /space/{space_id}/query` - Reserved for cross-collection queries (backend-specific)
 * `POST /space/{space_id}/{collection_id}/query` - Reserved for queries within a Collection (backend-specific)
 
-**Backend and Quota Management Endpoints (Optional):**
+**Backend and Quota Management Endpoints (Optional)** (see Appendix
+[[[#backends]]]):
 
 * `GET /space/{space_id}/backends` - Get the list of available backends for a Space
 * `GET /space/{space_id}/quotas` - Get the Quota report object, grouped by available Backend
@@ -182,7 +183,8 @@ This specification uses [[RFC9457]] Problem Details for HTTP APIs for error resp
 The `type` property is a URI identifying the _kind_ of problem (not the
 operation), and the same `type` is reused across operations. See Appendix
 [[[#error-type-registry]]] for the catalog of `type` URIs this specification
-defines, along with their typical status codes.
+defines, along with their typical status codes and a canonical example response
+for each kind.
 
 When returning errors, keep in mind the principle of **maximum privacy**:
 always "not found" instead of "not authorized". The _existence_ of a resource,
@@ -295,58 +297,6 @@ authorization profile.
 See **Appendix [[[#was-authorization-profile-v0-1]]]** for a description of the
 default profile based on Authorization Capabilities (zCaps).
 
-## Backends
-
-Backends are an **optional** infrastructure concern that is orthogonal to the
-hierarchical Spaces Repository > Space > Collection > Resource storage model.
-
-Available backends are registered on the Space level, as a combination of
-server-side configuration and client-side "Bring Your Own Storage" registration.
-
-For example, on the server configuration side, a given server might support several
-backends -- a file system default backend, an EDV encrypted backend, and a
-PostgreSQL database backend. And on the client side, a user might register an
-external storage provider by connecting to their Dropbox account.
-
-When a Collection is created, the client can optionally specify the preferred
-backend for that Collection. If no preferred backend is specified, one is assigned
-by the server (usually the `default` backend).
-
-Backends are an **optional system** that exists to serve advanced use cases that
-need fine-grained control over storage configurations.
-An implementer or client of a given server can omit the `backend` property when
-creating a Collection. By default, if not specified, all Collections are
-assigned the `default` backend.
-
-### Space Backends Available
-
-Example request:
-
-```http
-GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/backends HTTP/1.1
-Accept: application/json
-Authorization: ...
-```
-
-Example success response:
-
-```http
-HTTP/1.1 200 OK
-Content-type: application/json
-
-[
-  { "id": "default" },
-  { "id": "dropbox" },
-  { "id": "edv" }
-]
-```
-
-### Collection Backend Selected
-
-Each collection has an optional `backend` property that is set during its creation
-(see [[[#collection-data-model]]]). If not specified, it is assumed to have the
-`id` of `default`.
-
 ## Spaces Repositories
 
 A Spaces Repository is a set of API endpoints that supports the creation and
@@ -355,6 +305,12 @@ This `/spaces/` set of API endpoints is **optional**. If a server does not suppo
 this feature (for example, if it is a single-tenant server with an existing
 hardcoded Space), then it can implement only the `/space/{space_id}/` endpoints
 and get most of the functionality of this specification.
+
+<div class="ednote">
+The Spaces Repository endpoints are a candidate for extraction into a
+standalone companion specification (multi-tenant space provisioning) in a
+future version of this document.
+</div>
 
 ### Create Space operation
 
@@ -420,90 +376,26 @@ Note that in the example above:
 
 #### Create Space Errors
 
-Example error response (missing `controller` property):
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-HTTP/1.1 400 Bad Request
-Content-type: application/problem+json
-Content-Language: en
-
-{
-  "type": "https://wallet.storage/spec#invalid-request-body",
-  "title": "Invalid Create Space body.",
-  "errors": [
-    {
-      "detail": "'controller' property is required.",
-      "pointer": "#/controller"
-    }
-  ]
-}
-```
-
-Example error response (missing Proof of Possession signature):
-
-```http
-HTTP/1.1 401 Unauthorized
-Content-type: application/problem+json
-Content-Language: en
-
-{
-  "type": "https://wallet.storage/spec#missing-authorization",
-  "title": "Invalid Create Space request.",
-  "errors": [
-    {
-      "detail": "Valid proof of possession of the 'controller' DID must be provided."
-    }
-  ]
-}
-```
-
-Example error response (invalid authorization - the signing DID in the `Authorization`
-header does not match the DID specified in the `controller`):
-
-```http
-HTTP/1.1 403 Forbidden
-Content-type: application/problem+json
-Content-Language: en
-
-{
-  "type": "https://wallet.storage/spec#controller-mismatch",
-  "title": "Invalid Create Space request.",
-  "errors": [
-    {
-      "detail": "The signing DID from the Authorization header must match the 'controller' DID in request body.",
-      "pointer": "#/controller"
-    }
-  ]
-}
-```
+* [=invalid-request-body=] (400) -- the required `controller` property is
+  missing from the request body.
+* [=missing-authorization=] (401) -- the request lacks a valid proof of
+  possession of the `controller` DID.
+* [=controller-mismatch=] (400) -- the signing DID in the `Authorization` header
+  does not match the `controller` DID in the request body.
+* [=invalid-id=] (400) -- the supplied Space `id` is not URL-safe (see
+  [[[#identifiers]]]).
+* [=id-conflict=] (409) -- a Space with the supplied `id` already exists.
 
 Onboarding requirements, if any, are provider-specific and out of scope for this
 specification (see the optional onboarding material above). Their error `type`,
 `title`, and status code are likewise provider-defined.
 
-Example error response (invalid `id` provided):
-
-```http
-HTTP/1.1 400 Bad Request
-Content-type: application/problem+json
-Content-Language: en
-
-{
-  "type": "https://wallet.storage/spec#invalid-id",
-  "title": "Invalid Create Space id.",
-  "errors": [
-    {
-      "detail": "Space 'id' must be URL-safe.",
-      "pointer": "#/id"
-    }
-  ]
-}
-```
-
-The `POST /spaces/` operation is for server-assigned identifiers. To create or
-replace a Space at a client-chosen `id`, use the idempotent
-[[[#update-or-create-by-id-space-operation]]] instead, which (subject to
-authorization) replaces an existing Space rather than reporting a conflict.
+A `POST /spaces/` that supplies an `id` already in use returns the
+[=id-conflict=] error. To create or replace a Space at a client-chosen
+`id` without conflict, use the idempotent
+[[[#update-or-create-by-id-space-operation]]] instead.
 
 ### List Spaces Operation
 
@@ -631,32 +523,11 @@ Content-type: application/json
 
 #### Read Space Errors
 
-Example error response (missing or insufficient authorization):
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-A server MUST return the same error response in the case of missing or insufficient
-authorization as it would for a missing/not found space.
-
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Space not found or insufficient authorization."
-}
-```
-
-Example error response (space id not found):
-
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Space not found or insufficient authorization."
-}
-```
+* [=not-found=] (404) -- the Space does not exist, **or** the caller has missing
+  or insufficient authorization. A server MUST return the same error response in
+  both cases, per [[[#error-handling]]].
 
 ### Update (or Create by Id) Space operation
 
@@ -729,37 +600,14 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-Example error response (missing or insufficient authorization). Per
-[[[#error-handling]]], this is indistinguishable from the space not existing:
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Space not found or insufficient authorization."
-}
-```
-
-Example error response (client is attempting to change an immutable field, such
-as setting a body `id` that does not match the `{space_id}` in the URL):
-
-```http
-HTTP/1.1 400 Bad Request
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#invalid-request-body",
-  "title": "Invalid Update Space body.",
-  "errors": [
-    {
-      "detail": "Body 'id' must match the space id in the request URL.",
-      "pointer": "#/id"
-    }
-  ]
-}
-```
+* [=not-found=] (404) -- the Space does not exist, **or** the caller has missing
+  or insufficient authorization; per [[[#error-handling]]] the two are
+  indistinguishable.
+* [=invalid-request-body=] (400) -- the client is attempting to change an
+  immutable field, such as setting a body `id` that does not match the
+  `{space_id}` in the request URL.
 
 ### Delete Space operation
 
@@ -786,36 +634,14 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-Example error response (missing or insufficient authorization). Per
-[[[#error-handling]]], this is indistinguishable from the space not existing:
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Space not found or insufficient authorization."
-}
-```
-
-Example error response (invalid `id` provided):
-
-```http
-HTTP/1.1 400 Bad Request
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#invalid-id",
-  "title": "Invalid Space id.",
-  "errors": [
-    {
-      "detail": "Space 'id' must be URL-safe.",
-      "pointer": "#/id"
-    }
-  ]
-}
-```
+* [=not-found=] (404) -- the caller has missing or insufficient authorization.
+  Because DELETE is idempotent, an authorized request for an already-absent
+  Space returns `204`; an under-authorized request returns `404` instead, per
+  [[[#error-handling]]], so that an unauthorized caller cannot probe for
+  existence.
+* [=invalid-id=] (400) -- the supplied Space `id` is not URL-safe.
 
 ### List All Collections operation
 
@@ -982,58 +808,15 @@ Content-type: application/json
 Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials
 ```
 
-Example error request and response (invalid `id` from
-[[[#space-level-reserved-endpoints]]] provided):
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
-Content-Type: application/json
-Authorization: ...
-
-{
-  "id": "query",
-  "type": ["Collection"]
-}
-```
-
-Response:
-
-```http
-HTTP/1.1 409 Conflict
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#reserved-id",
-  "title": "Invalid collection id (from reserved list)."
-}
-```
-
-Example error request and response (a `backend` object that is not part of
-that space's [[[#space-backends-available]]] list is specified):
-
-```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections/ HTTP/1.1
-Host: example.com
-Content-Type: application/json
-Authorization: ...
-
-{
-  "type": ["Collection"],
-  "backend": { "id": "an-unsupported-backend" }
-}
-```
-
-Response:
-
-```http
-HTTP/1.1 409 Conflict
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#unsupported-backend",
-  "title": "Unsupported backend id, check the space's 'backends available' list."
-}
-```
+* [=reserved-id=] (409) -- the supplied Collection `id` collides with one of the
+  [[[#space-level-reserved-endpoints]]] (for example, `query` or `collections`).
+* [=id-conflict=] (409) -- a Collection with the supplied `id` already exists.
+  To create or replace a Collection at a client-chosen `id` without conflict,
+  use the idempotent [[[#update-or-create-by-id-collection-operation]]] instead.
+* [=unsupported-backend=] (409) -- the supplied `backend` id is not in that
+  space's [[[#space-backends-available]]] list.
 
 ### Update (or Create By Id) Collection operation
 
@@ -1063,32 +846,11 @@ Authorization: ...
 HTTP/1.1 201 Created
 ```
 
-Example error request and response (invalid collection `id` from
-[[[#space-level-reserved-endpoints]]] provided):
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/collections HTTP/1.1
-Host: example.com
-Content-Type: application/json
-Authorization: ...
-
-{
-  "id": "collections",
-  "type": ["Collection"]
-}
-```
-
-Response:
-
-```http
-HTTP/1.1 409 Conflict
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#reserved-id",
-  "title": "Invalid collection id (from reserved list)."
-}
-```
+* [=reserved-id=] (409) -- the supplied Collection `id` collides with one of the
+  [[[#space-level-reserved-endpoints]]] (for example, `collections` or
+  `linkset`).
 
 ### Get Collection Description operation
 
@@ -1263,32 +1025,14 @@ Content-type: application/json
 Location: https://example.com/space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/6b5be748-5f39-4936-a895-409e393c399c
 ```
 
-Example error request and response creating a resource (invalid `id` from
-[[[#collection-level-reserved-endpoints]]] provided):
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-POST /space/81246131-69a4-45ab-9bff-9c946b59cf2e/credentials/ HTTP/1.1
-Host: example.com
-Content-Type: application/json
-Authorization: ...
-
-{
-  "id": "query",
-  "type": ["ExampleResource"]
-}
-```
-
-Response:
-
-```http
-HTTP/1.1 409 Conflict
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#reserved-id",
-  "title": "Invalid resource id (from reserved list)."
-}
-```
+* [=reserved-id=] (409) -- the supplied Resource `id` collides with one of the
+  [[[#collection-level-reserved-endpoints]]] (for example, `query` or
+  `linkset`).
+* [=id-conflict=] (409) -- a Resource with the supplied `id` already exists.
+  To create or replace a Resource at a client-chosen `id` without conflict,
+  use the idempotent [[[#update-or-create-by-id-resource-operation]]] instead.
 
 ### Read Resource Operation
 
@@ -1319,19 +1063,12 @@ Content-type: application/json
 {"message":"hi"}
 ```
 
-Example error response (missing or invalid resource, or insufficient
-authorization). Per [[[#error-handling]]], a resource the caller is not
-authorized to read is indistinguishable from one that does not exist:
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Resource not found or insufficient authorization."
-}
-```
+* [=not-found=] (404) -- the Resource does not exist, **or** the caller has
+  missing or insufficient authorization; per [[[#error-handling]]] a resource
+  the caller is not authorized to read is indistinguishable from one that does
+  not exist.
 
 ### Update (or Create By Id) Resource Operation
 
@@ -1383,46 +1120,15 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-Example error request and response (invalid resource `id` from
-[[[#collection-level-reserved-endpoints]]] provided):
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/query HTTP/1.1
-Host: example.com
-Content-Type: application/json
-Authorization: ...
-
-{
-  "id": "query",
-  "type": ["Example"]
-}
-```
-
-Response:
-
-```http
-HTTP/1.1 409 Conflict
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#reserved-id",
-  "title": "Invalid resource id (from reserved list)."
-}
-```
-
-Example error response (missing or invalid space or collection, or insufficient
-authorization). Per [[[#error-handling]]], an under-authorized request is
-indistinguishable from a missing target:
-
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Resource not found or insufficient authorization."
-}
-```
+* [=reserved-id=] (409) -- the supplied Resource `id` collides with one of the
+  [[[#collection-level-reserved-endpoints]]] (for example, `query` or
+  `linkset`).
+* [=not-found=] (404) -- the enclosing Space or Collection is missing or
+  invalid, **or** the caller has missing or insufficient authorization; per
+  [[[#error-handling]]] an under-authorized request is indistinguishable from a
+  missing target.
 
 ### Delete Resource Operation
 
@@ -1454,20 +1160,13 @@ Example success response:
 HTTP/1.1 204 No Content
 ```
 
-Example error response (missing or insufficient authorization). Because DELETE is
-idempotent, an authorized request for an already-absent resource returns `204`;
-a request that lacks sufficient authorization instead returns `404`, per
-[[[#error-handling]]], so that an unauthorized caller cannot probe for existence:
+Errors (see [[[#error-type-registry]]] for canonical examples):
 
-```http
-HTTP/1.1 404 Not Found
-Content-type: application/problem+json
-
-{
-  "type": "https://wallet.storage/spec#not-found",
-  "title": "Resource not found or insufficient authorization."
-}
-```
+* [=not-found=] (404) -- the caller has missing or insufficient authorization.
+  Because DELETE is idempotent, an authorized request for an already-absent
+  resource returns `204`; a request that lacks sufficient authorization instead
+  returns `404`, per [[[#error-handling]]], so that an unauthorized caller
+  cannot probe for existence.
 
 <section class="appendix">
 
@@ -2018,6 +1717,70 @@ Content-type: application/linkset+json
 
 <section class="appendix">
 
+## Backends
+
+Backends are an **optional** infrastructure concern that is orthogonal to the
+hierarchical Spaces Repository > Space > Collection > Resource storage model.
+
+Available backends are registered on the Space level, as a combination of
+server-side configuration and client-side "Bring Your Own Storage" registration.
+
+For example, on the server configuration side, a given server might support several
+backends -- a file system default backend, an EDV encrypted backend, and a
+PostgreSQL database backend. And on the client side, a user might register an
+external storage provider by connecting to their Dropbox account.
+
+When a Collection is created, the client can optionally specify the preferred
+backend for that Collection. If no preferred backend is specified, one is assigned
+by the server (usually the `default` backend).
+
+Backends are an **optional system** that exists to serve advanced use cases that
+need fine-grained control over storage configurations.
+An implementer or client of a given server can omit the `backend` property when
+creating a Collection. By default, if not specified, all Collections are
+assigned the `default` backend.
+
+### Space Backends Available
+
+Example request:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/backends HTTP/1.1
+Accept: application/json
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+[
+  { "id": "default" },
+  { "id": "dropbox" },
+  { "id": "edv" }
+]
+```
+
+### Collection Backend Selected
+
+Each collection has an optional `backend` property that is set during its creation
+(see [[[#collection-data-model]]]). If not specified, it is assumed to have the
+`id` of `default`.
+
+### Quotas
+
+TODO: Add quota reporting semantics. Some Backends support quota limit
+enforcement; where supported, a per-Space quota report (grouped by backend) is
+available at `GET /space/{space_id}/quotas`, and a per-Collection report at
+`GET /space/{space_id}/{collection_id}/quota` (not all Backends support
+per-collection quotas).
+
+</section>
+
+<section class="appendix">
+
 ## Reserved Path Segment Registry
 
 ### Space-level reserved endpoints
@@ -2092,6 +1855,7 @@ status code depending on the operation.
 | `https://wallet.storage/spec#not-found` | <dfn id="not-found">not-found</dfn> | 404 | The resource (Space, Collection, or Resource) does not exist, **or** the caller is not authorized to access it. These two conditions are deliberately indistinguishable -- see the privacy note below. |
 | `https://wallet.storage/spec#invalid-id` | <dfn id="invalid-id">invalid-id</dfn> | 400 | A Space, Collection, or Resource `id` is missing or not URL-safe. |
 | `https://wallet.storage/spec#reserved-id` | <dfn id="reserved-id">reserved-id</dfn> | 409 | A client-supplied `id` collides with a [[[#reserved-path-segment-registry]]] segment. |
+| `https://wallet.storage/spec#id-conflict` | <dfn id="id-conflict">id-conflict</dfn> | 409 | A client-supplied `id` in a `POST` create operation already exists. (Create-or-replace by `id` is done idempotently via `PUT`, which does not conflict.) |
 | `https://wallet.storage/spec#invalid-request-body` | <dfn id="invalid-request-body">invalid-request-body</dfn> | 400 | The request body is missing or invalid (e.g. a required property is absent). Entries in `errors` SHOULD carry a `pointer` to the offending field. |
 | `https://wallet.storage/spec#missing-content-type` | <dfn id="missing-content-type">missing-content-type</dfn> | 400 | A required `Content-Type` header is missing. |
 | `https://wallet.storage/spec#missing-authorization` | <dfn id="missing-authorization">missing-authorization</dfn> | 401 | Required `Authorization` / `Capability-Invocation` headers (or proof of possession) are missing. |
@@ -2114,6 +1878,150 @@ This merging applies to "insufficient-authorization" and "absent-authorization"
 against an existing target. It does not apply to request- or
 credential-validation failures, which describe the request rather than the
 target and so MAY use their own precise `type`s -- see [[[#error-handling]]].
+
+### Error Response Examples
+
+Canonical example responses for the error kinds defined above, referenced by
+the per-operation "Errors" lists throughout this specification. The `title`
+strings are illustrative, not normative: for example, the noun in a
+[=not-found=] `title` varies with the target (Space, Collection, or Resource),
+and a `title` may name the operation that failed. Kinds not shown here
+([=missing-content-type=], [=invalid-authorization-header=],
+[=invalid-import=], [=storage-error=], [=internal-error=]) follow the same
+shape; they will gain examples as their corresponding sections are drafted.
+
+[=not-found=] -- a missing target, or missing or insufficient authorization
+(deliberately indistinguishable, see the privacy note above):
+
+```http
+HTTP/1.1 404 Not Found
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#not-found",
+  "title": "Resource not found or insufficient authorization."
+}
+```
+
+[=invalid-id=] -- an `id` that is not URL-safe (see [[[#identifiers]]]):
+
+```http
+HTTP/1.1 400 Bad Request
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#invalid-id",
+  "title": "Invalid Space id.",
+  "errors": [
+    {
+      "detail": "Space 'id' must be URL-safe.",
+      "pointer": "#/id"
+    }
+  ]
+}
+```
+
+[=reserved-id=] -- a client-supplied `id` that collides with a segment from the
+[[[#reserved-path-segment-registry]]]:
+
+```http
+HTTP/1.1 409 Conflict
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#reserved-id",
+  "title": "Invalid collection id (from reserved list)."
+}
+```
+
+[=id-conflict=] -- a `POST` create operation supplying an `id` that already
+exists:
+
+```http
+HTTP/1.1 409 Conflict
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#id-conflict",
+  "title": "A Collection with this id already exists.",
+  "errors": [
+    {
+      "detail": "Use PUT to create-or-replace a Collection at a chosen id.",
+      "pointer": "#/id"
+    }
+  ]
+}
+```
+
+[=invalid-request-body=] -- a missing or invalid request body (here, a Create
+Space request without the required `controller` property):
+
+```http
+HTTP/1.1 400 Bad Request
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#invalid-request-body",
+  "title": "Invalid Create Space body.",
+  "errors": [
+    {
+      "detail": "'controller' property is required.",
+      "pointer": "#/controller"
+    }
+  ]
+}
+```
+
+[=missing-authorization=] -- required authorization (here, a proof of
+possession signature on a Create Space request) is missing:
+
+```http
+HTTP/1.1 401 Unauthorized
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#missing-authorization",
+  "title": "Invalid Create Space request.",
+  "errors": [
+    {
+      "detail": "Valid proof of possession of the 'controller' DID must be provided."
+    }
+  ]
+}
+```
+
+[=controller-mismatch=] -- the signing DID in the `Authorization` header does
+not match the DID specified in the `controller` property of a Create Space
+request body:
+
+```http
+HTTP/1.1 400 Bad Request
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#controller-mismatch",
+  "title": "Invalid Create Space request.",
+  "errors": [
+    {
+      "detail": "The signing DID from the Authorization header must match the 'controller' DID in request body.",
+      "pointer": "#/controller"
+    }
+  ]
+}
+```
+
+[=unsupported-backend=] -- a `backend` id that is not part of that space's
+[[[#space-backends-available]]] list:
+
+```http
+HTTP/1.1 409 Conflict
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#unsupported-backend",
+  "title": "Unsupported backend id, check the space's 'backends available' list."
+}
+```
 
 </section>
 
