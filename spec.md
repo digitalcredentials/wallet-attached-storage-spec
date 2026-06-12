@@ -998,8 +998,10 @@ Resource properties:
 * `contentType` (optional) - The MIME type of the default representation of the
   resource (provided by the server when listing resources
   via the [[[#list-collection-operation]]])
-* Links to any metadata objects controlled by the Wallet Attached Storage server
-* Links to any metadata objects modifiable by the resource's controller
+* Each Resource also has an associated Metadata object -- server-managed
+  properties (`contentType`, `size`, optional timestamps) plus user-writable
+  ones (`name`, `tags`) -- addressable at the reserved `/meta` path segment
+  under the Resource URL. See [[[#resource-metadata-data-model]]].
 
 ### Create Resource (Add Resource to Collection) Operation
 
@@ -1176,6 +1178,163 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
   resource returns `204`; a request that lacks sufficient authorization instead
   returns `404`, per [[[#error-handling]]], so that an unauthorized caller
   cannot probe for existence.
+
+### Resource Metadata Data Model
+
+Each Resource has an associated **Metadata object**, addressable at the
+reserved `/meta` path segment under the Resource URL (one of the
+[[[#resource-level-reserved-endpoints]]]). The metadata endpoints are
+OPTIONAL; a [=server=] that does not implement them SHOULD return an
+[=unsupported-operation=] (501) error for requests to `/meta` paths.
+
+The Metadata object is a flat JSON document containing two groups of
+properties:
+
+* **Server-managed properties** are maintained by the server as a side
+  effect of Resource write operations. They are read-only: the
+  [[[#update-resource-metadata-operation]]] cannot change them.
+* **User-writable properties** are set by the client via the
+  [[[#update-resource-metadata-operation]]].
+
+Server-managed properties (`contentType` and `size` are REQUIRED in every
+Metadata object; the timestamps are OPTIONAL):
+
+* `contentType` - The MIME type of the stored representation of the Resource,
+  recorded from the `Content-Type` header of the request that last wrote the
+  Resource's content (`application/octet-stream` if none was provided). The
+  same value is reported in [[[#list-collection-operation]]] results and as
+  the `Content-Type` header of `GET`/`HEAD` responses for the Resource itself.
+* `size` - The length in bytes of the stored representation of the Resource
+  (see the `size` property of the [[[#blob-data-model]]]).
+* `createdAt` (optional) - The [[RFC3339]] `date-time` at which the Resource
+  was created.
+* `updatedAt` (optional) - The [[RFC3339]] `date-time` at which the Resource's
+  content or user-writable metadata was last modified.
+
+<div class="ednote">
+**Versioning deliberately absent.** This model intentionally omits an
+`etag` / version identifier; version tracking belongs with the broader
+conditional-writes design (`If-Match`, the Transaction mechanism), which is
+deliberately deferred. See also the concurrency-control note in Appendix
+[[[#backends]]].
+</div>
+
+User-writable properties:
+
+* `name` (optional) - A human-readable name for the Resource. This is the
+  same `name` property defined in the [[[#resource-data-model]]] and returned
+  by the [[[#list-collection-operation]]]; updating it here updates the name
+  shown in Collection listings.
+* `tags` (optional) - A JSON object of application-defined annotations. Keys
+  are strings chosen by the application; values SHOULD be strings, so that
+  tags stay cheap to index and filter on. Applications that need richer
+  structured metadata SHOULD store it as a Resource in its own right rather
+  than in `tags`.
+
+A Resource's Metadata object is created and deleted together with the
+Resource itself: it comes into existence (with only server-managed
+properties) when the Resource is created, and is removed when the Resource is
+deleted. There is no `DELETE /meta` operation; to clear the user-writable
+properties, send a `PUT` with an empty object (`{}`).
+
+### Read Resource Metadata Operation
+
+#### (HTTP API) GET `/space/{space_id}/{collection_id}/{resource_id}/meta`
+
+* Requires appropriate authorization
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for
+    authorization, the request must either: be signed by the resource's or the
+    space's [=controller=], or invoke a delegated capability that allows the
+    [`GET` action](#get-action)
+
+Example request:
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world/meta HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+Example success response:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "contentType": "application/json",
+  "size": 16,
+  "createdAt": "2026-06-10T09:12:00Z",
+  "updatedAt": "2026-06-12T13:25:00Z",
+  "name": "Hello World greeting",
+  "tags": { "project": "demo", "status": "draft" }
+}
+```
+
+Errors (see [[[#error-type-registry]]] for canonical examples):
+
+* [=not-found=] (404) -- the Resource does not exist, **or** the caller has
+  missing or insufficient authorization; per [[[#error-handling]]] a Metadata
+  object the caller is not authorized to read is indistinguishable from one
+  that does not exist.
+* [=unsupported-operation=] (501) -- the server does not implement the
+  optional metadata endpoints.
+
+### Update Resource Metadata Operation
+
+A `PUT` to the `/meta` endpoint is a _full_ replacement of the
+**user-writable** group of properties: any user-writable property omitted
+from the request body is cleared. Server-managed properties are not affected
+by this operation; a server MUST ignore any server-managed properties present
+in the request body (so that a client may read the Metadata object, modify
+it, and `PUT` it back without first stripping the server-managed properties).
+
+Unlike the [[[#update-or-create-by-id-resource-operation]]], a `PUT` to
+`/meta` does **not** create anything: a Metadata object cannot exist apart
+from its Resource, so a `PUT` to the `/meta` path of a nonexistent Resource
+returns a [=not-found=] (404) error.
+
+#### (HTTP API) PUT `/space/{space_id}/{collection_id}/{resource_id}/meta`
+
+* Requires appropriate authorization
+  - For example, when using [zCaps](#was-authorization-profile-v0-1) for
+    authorization, the request must either: be signed by the resource's or the
+    space's [=controller=], or invoke a delegated capability that allows the
+    [`PUT` action](#put-action)
+* This operation is idempotent
+* Returns a `204` success response
+
+Example request:
+
+```http
+PUT /space/81246131-69a4-45ab-9bff-9c946b59cf2e/messages/hello-world/meta HTTP/1.1
+Host: example.com
+Content-Type: application/json
+Authorization: ...
+
+{
+  "name": "Hello World greeting",
+  "tags": { "project": "demo", "status": "draft" }
+}
+```
+
+Example success response:
+
+```http
+HTTP/1.1 204 No Content
+```
+
+Errors (see [[[#error-type-registry]]] for canonical examples):
+
+* [=not-found=] (404) -- the Resource does not exist (this operation does not
+  create one), **or** the caller has missing or insufficient authorization,
+  per [[[#error-handling]]].
+* [=invalid-request-body=] (400) -- the request body is not a JSON object, or
+  a user-writable property does not have the shape described in
+  [[[#resource-metadata-data-model]]].
+* [=unsupported-operation=] (501) -- the server does not implement the
+  optional metadata endpoints.
 
 <section class="appendix">
 
@@ -2069,7 +2228,7 @@ level operations.
 
 | Reserved API Endpoint                                  | Reserved segment | Purpose                              |
 |--------------------------------------------------------|------------------|--------------------------------------|
-| `/space/{space_id}/{collection_id}/{resource_id}/meta` | `meta`           | User-defined metadata for a resource |
+| `/space/{space_id}/{collection_id}/{resource_id}/meta` | `meta`           | Resource metadata (server-managed and user-writable) |
 
 </section>
 
