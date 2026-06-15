@@ -224,6 +224,55 @@ TODO: Add caching semantics section.
 
 * `ETag`, `If-None-Match`, `Last-Modified`, and `Cache-Control` are encouraged
 * Set "no cache" headers for non-idempotent operations
+* On the read side, a Resource's `ETag` validator (see
+  [[[#conditional-requests]]]) drives ordinary HTTP caching: a `GET` carrying
+  `If-None-Match: "<etag>"` yields `304 Not Modified` when the Resource is
+  unchanged.
+
+### Conditional Requests
+
+Servers and backends MAY support [[RFC9110]] conditional requests to provide
+optimistic concurrency control on writes -- the mechanism that prevents the
+"lost update" problem, where two clients that both read version N of a Resource
+each write version N+1 and the second silently clobbers the first. A backend
+that supports this advertises the `conditional-writes` feature in its Backend
+description (see [[[#backend-data-model]]]); a client SHOULD use these
+preconditions only against a backend that advertises support.
+
+When supported, a Resource carries a strong **`ETag`** validator that changes
+whenever its stored content changes. Servers SHOULD return the `ETag` on
+`GET`/`HEAD` responses. A backend MAY derive the `ETag` from an internal
+monotonic version counter (such as an Encrypted Data Vault document
+`sequence`); the validator is opaque to clients.
+
+A state-changing request (`PUT` or `DELETE`) MAY carry a precondition:
+
+* **`If-Match: "<etag>"`** -- perform the write only if the Resource's current
+  `ETag` matches it (an "update-if-unchanged"). If it does not match, the server
+  MUST NOT perform the write and MUST respond with [=precondition-failed=]
+  (`412`).
+* **`If-None-Match: *`** -- perform the write only if the Resource does not yet
+  exist (a "create-if-absent"). If it already exists, the server MUST NOT
+  perform the write and MUST respond with [=precondition-failed=] (`412`).
+
+A server that supports conditional writes MUST evaluate the precondition
+atomically with the write (for example, under a per-Resource lock), so that
+two concurrent writers cannot both observe the same prior version and both
+succeed. A client recovers from a `412` by re-reading the current Resource,
+re-applying its change on top of the new version, and retrying.
+
+As with [=id-conflict=], a server MUST verify the caller's authorization
+*before* evaluating a precondition, so a `412` is only ever observed by a caller
+already authorized to write the target; an under-authorized caller receives the
+merged [=not-found=] (`404`) instead, per the maximum-privacy rule in
+[[[#error-handling]]].
+
+A `412` arises only from an explicit `If-Match` / `If-None-Match`
+precondition header. It is deliberately distinct from the header-less `409`
+conflict kinds -- [=id-conflict=] (a `POST` create whose chosen `id` is already
+taken) and [=reserved-id=] -- which describe a conflict with current state where
+the client stated no precondition. Conditional requests are the versioned,
+header-driven concurrency mechanism; the `409` kinds are not.
 
 ### Pagination
 
@@ -1329,6 +1378,13 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
   remaining (see [[[#quotas]]]).
 * [=payload-too-large=] (413) -- the upload exceeds the backend's
   `maxUploadBytes` constraint (see [[[#quotas]]]).
+* [=precondition-failed=] (412) -- a conditional write's `If-Match` /
+  `If-None-Match` precondition evaluated false, on a backend that advertises
+  the `conditional-writes` feature (see [[[#conditional-requests]]]).
+
+This operation accepts the `If-Match` / `If-None-Match` write preconditions
+described in [[[#conditional-requests]]] when the target backend advertises the
+`conditional-writes` feature.
 
 ### Delete Resource Operation
 
@@ -1404,11 +1460,13 @@ Metadata object; the timestamps are OPTIONAL):
   content or user-writable metadata was last modified.
 
 <div class="ednote">
-**Versioning deliberately absent.** This model intentionally omits an
-`etag` / version identifier; version tracking belongs with the broader
-conditional-writes design (`If-Match`, the Transaction mechanism), which is
-deliberately deferred. See also the concurrency-control note in Appendix
-[[[#backends]]].
+**Versioning is optional and backend-advertised.** This metadata model does not
+mandate a stored `etag` / version property. When a backend advertises the
+`conditional-writes` feature it exposes a Resource version as an HTTP `ETag`
+validator and honors `If-Match` / `If-None-Match` preconditions; see
+[[[#conditional-requests]]]. A backend without that feature performs
+unconditional last-writer-wins upserts. The broader Transaction (multi-write
+atomic) mechanism remains deferred.
 </div>
 
 User-writable properties:
@@ -2221,6 +2279,26 @@ Backend description properties:
   survive a restart). Defaults to `durable`. Note that this is a _technical_ property of the storage engine,
   deliberately distinct from any _administrative_ data-retention rules (see the
   editor's note on lifecycle configuration below).
+* `features` (optional) - An array of capability tokens advertising optional
+  _server affordances_ the backend provides beyond the baseline read/write API,
+  so that clients can gate behavior on what the backend actually does. The
+  vocabulary is open and additive: a client MUST ignore tokens it does not
+  recognize, and MUST treat an absent token (or an absent `features` array) as
+  "not supported" rather than assuming a default. Tokens this specification
+  defines:
+  - `conditional-writes` - the backend enforces `If-Match` / `If-None-Match`
+    write preconditions (see [[[#conditional-requests]]]).
+  - `blinded-index-query` - the backend serves the blinded-index profile of the
+    reserved `query` endpoint.
+  - `chunked-streams` - the backend supports chunk addressing for large blobs.
+
+  Each token names something the **server** must actively do. Note that
+  client-side encryption is deliberately **not** a backend feature: an encrypted
+  document is opaque client-encrypted JSON that any document-capable backend
+  stores faithfully with no server cooperation, and whether a given Collection
+  is encrypted varies _per Collection_ on the very same backend. Encryption is
+  therefore a property of a Collection's data (signaled at the Collection level
+  and held in the client's keys), not a capability of the backend.
 
 <div class="ednote">
 The schema of a backend's connection configuration (server-internal
@@ -2264,7 +2342,8 @@ Content-type: application/json
     "name": "Encrypted Data Vault",
     "managedBy": "server",
     "storageMode": ["document", "blob"],
-    "persistence": "durable"
+    "persistence": "durable",
+    "features": ["conditional-writes", "blinded-index-query", "chunked-streams"]
   }
 ]
 ```
@@ -2297,7 +2376,8 @@ hierarchy.) That generalization will bring with it:
   only diverge once replication exists, so the [[[#quotas]]] report currently
   carries plain per-backend usage.
 * Concurrency control (`If-Match` ETags) for updates to replica topology,
-  tied to the broader conditional-writes design that is deliberately deferred.
+  building on the per-Resource conditional-writes mechanism (see
+  [[[#conditional-requests]]]) generalized to multi-replica writes.
 </div>
 
 <div class="ednote">
@@ -2526,6 +2606,7 @@ status code depending on the operation.
 | `https://wallet.storage/spec#invalid-authorization-header` | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn> | 400 | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification. |
 | `https://wallet.storage/spec#controller-mismatch` | <dfn id="controller-mismatch">controller-mismatch</dfn> | 400 | The capability invocation in a Create Space request is not currently authorized by the `controller` supplied in the request body: it is neither signed by that DID nor accompanied by a valid, unexpired delegation chain rooted in it. Servers SHOULD differentiate the cause (chain rooted elsewhere, expired delegation, failed proof) in the `detail` string where they can; see [[[#create-space-errors]]]. |
 | `https://wallet.storage/spec#unsupported-backend` | <dfn id="unsupported-backend">unsupported-backend</dfn> | 409 | A requested `backend` id is not in the space's [[[#space-backends-available]]] list. |
+| `https://wallet.storage/spec#precondition-failed` | <dfn id="precondition-failed">precondition-failed</dfn> | 412 | A conditional write's `If-Match` / `If-None-Match` precondition evaluated false: the Resource's current version did not match, or a create-if-absent target already exists. Header-driven and distinct from the `409` conflict kinds. See [[[#conditional-requests]]]. |
 | `https://wallet.storage/spec#quota-exceeded` | <dfn id="quota-exceeded">quota-exceeded</dfn> | 507 | A write was rejected because the target backend's storage quota is exhausted. See [[[#quotas]]]. |
 | `https://wallet.storage/spec#payload-too-large` | <dfn id="payload-too-large">payload-too-large</dfn> | 413 | An upload exceeds the target backend's `maxUploadBytes` constraint (see [[[#quotas]]]). Note that unlike [=quota-exceeded=], this rejection is per-request: smaller uploads may still succeed. |
 | `https://wallet.storage/spec#unsupported-operation` | <dfn id="unsupported-operation">unsupported-operation</dfn> | 501 | An optional operation that this server or the target backend does not support (for example, a per-collection quota report on a backend without per-collection accounting). |
@@ -2624,6 +2705,24 @@ Content-type: application/problem+json
     {
       "detail": "Use PUT to create-or-replace a Collection at a chosen id.",
       "pointer": "#/id"
+    }
+  ]
+}
+```
+
+[=precondition-failed=] -- a conditional `PUT` whose `If-Match` precondition did
+not match the Resource's current version (a concurrent write landed first):
+
+```http
+HTTP/1.1 412 Precondition Failed
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#precondition-failed",
+  "title": "The resource was modified by another write.",
+  "errors": [
+    {
+      "detail": "Re-read the current resource, re-apply your change, and retry."
     }
   ]
 }
