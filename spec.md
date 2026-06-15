@@ -276,8 +276,94 @@ header-driven concurrency mechanism; the `409` kinds are not.
 
 ### Pagination
 
-TODO: Add pagination section for 'list spaces', 'list collections', and 'list resources'
-operations.
+The list operations -- [[[#list-spaces-operation]]], [[[#list-all-collections-operation]]],
+and [[[#list-collection-operation]]] -- return a collection of items in the
+common envelope (`url`, `totalItems`, `items`). A Space or Collection may hold
+more items than are practical to return in a single response, so servers MAY
+paginate these responses, returning one page of items at a time. Pagination
+is OPTIONAL: a server that returns every item in a single response (as the
+examples in those sections show) is conformant, and a client MUST be prepared
+for either behavior.
+
+This profile uses cursor-based (also called "keyset") pagination rather than
+numeric offsets. A cursor identifies a position in a stably ordered result set,
+so paging stays correct and cheap even as items are concurrently added or
+removed, and at any depth into a large collection.
+
+#### Ordering
+
+A paginated list operation MUST return items in a stable total order: an
+ordering that is deterministic and in which no two items compare equal. The
+default order is ascending by item `id` (which is unique within its parent, see
+[[[#identifiers]]]). A server MAY offer additional orderings, but every order it
+supports for pagination MUST be stable and total -- if the primary sort key is
+not unique (for example a timestamp), the server MUST break ties on a unique key
+(such as `id`) so that the combined order is total. This stable order is what a
+cursor seeks within; an unstable order cannot be paginated correctly.
+
+#### Requesting a page
+
+A client requests pagination with two OPTIONAL query parameters:
+
+* `limit` - the maximum number of items the client wants in the page, a
+  positive integer. A server applies its own default when `limit` is absent, and
+  MAY clamp an oversized `limit` down to a server maximum rather than rejecting
+  the request. A server MAY return fewer items than `limit` (including zero) and
+  still indicate more pages follow; clients MUST NOT treat a short page as the
+  end of the list (see `next`, below).
+* `cursor` - an opaque token, obtained from a prior page's `next` value (see
+  below), naming the position to continue from. A client MUST treat the cursor as
+  opaque: it MUST NOT construct, parse, or modify it, and MUST NOT carry a cursor
+  from one collection, ordering, or server to another. A server encodes whatever
+  it needs into the cursor to resume the ordered scan (typically the sort-key
+  value of the last item already returned).
+
+The first page is requested with no `cursor` (a bare `limit`, or neither
+parameter).
+
+#### The paginated response
+
+A paginated response carries the usual envelope, plus a `next` member when more
+items may follow:
+
+* `next` - a URL the client dereferences (with the same authorization) to
+  retrieve the following page. The server bakes the appropriate `cursor` (and
+  any `limit`) into this URL, so the client follows it without constructing query
+  parameters itself. `next` is present if and only if more items may follow;
+  its absence marks the last page. This presence/absence is the authoritative
+  end-of-list signal.
+* `totalItems` - when present, the total number of items in the entire
+  collection, not the number in the current page (the page count is simply the
+  length of `items`). Computing an exact total can be expensive at scale, so a
+  paginating server MAY omit `totalItems`. A client MUST NOT infer the number of
+  pages, or whether more pages exist, from `totalItems`; only `next` is
+  authoritative.
+
+A client consumes a multi-page list by following `next` from each response until
+a response omits it. A server SHOULD ensure that an item present throughout the
+traversal appears exactly once across the pages; an item added or removed
+concurrently with the traversal MAY or MAY NOT appear. (Snapshot consistency --
+a paginated traversal observing a single point in time -- is permitted but not
+required; a server MAY encode a snapshot identifier into the cursor to provide
+it.)
+
+A `cursor` that is malformed, or that a server can no longer honor (for example
+an expired snapshot), is rejected with an [=invalid-cursor=] (`400`) error. As
+with other request-validation failures, a server MUST verify the caller's
+authorization for the target before validating the cursor, so the error is
+only ever observed by a caller already authorized to list that target; an
+under-authorized caller receives the merged [=not-found=] (`404`) instead, per
+[[[#error-handling]]].
+
+#### Pagination parameters and authorization
+
+A capability authorizes a list [=target=] independent of which page is being
+read: a capability that authorizes listing a Space, Collection, or Spaces
+Repository authorizes retrieval of *every* page of that list. The `limit` and
+`cursor` parameters select a page within an already-authorized target; they do
+not narrow, widen, or otherwise change the [=target=] a capability must match
+(see [[[#root-capability]]]). A server MUST NOT require a distinct capability per
+page.
 
 ## Terminology
 
@@ -351,7 +437,7 @@ default profile based on Authorization Capabilities (zCaps).
 
 A Spaces Repository is a set of API endpoints that supports the creation and
 management of multiple spaces on a given [=server=].
-This `/spaces/` set of API endpoints is **optional**. If a server does not support
+This `/spaces/` set of API endpoints is optional. If a server does not support
 this feature (for example, if it is a single-tenant server with an existing
 hardcoded Space), then it can implement only the `/space/{space_id}/` endpoints
 and get most of the functionality of this specification.
@@ -507,6 +593,8 @@ disclose those remains provider-defined.
 
 * Lists only the spaces the requester is authorized to see
 
+* MAY be paginated (see [[[#pagination]]])
+
 #### (HTTP API) GET `/spaces/`
 
 Example request:
@@ -630,7 +718,7 @@ Content-type: application/json
 
 Errors (see [[[#error-type-registry]]] for canonical examples):
 
-* [=not-found=] (404) -- the Space does not exist, **or** the caller has missing
+* [=not-found=] (404) -- the Space does not exist, or the caller has missing
   or insufficient authorization. A server MUST return the same error response in
   both cases, per [[[#error-handling]]].
 
@@ -722,7 +810,7 @@ HTTP/1.1 204 No Content
 
 Errors (see [[[#error-type-registry]]] for canonical examples):
 
-* [=not-found=] (404) -- the Space does not exist, **or** the caller has missing
+* [=not-found=] (404) -- the Space does not exist, or the caller has missing
   or insufficient authorization; per [[[#error-handling]]] the two are
   indistinguishable.
 * [=invalid-request-body=] (400) -- the client is attempting to change an
@@ -770,6 +858,7 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 * Since Collection's `name` property is optional, default it to be the same
   value as `id` when `name` is missing. (The name is intended to drive UIs, so
   defaulting to `id` simplifies consuming client logic.)
+* MAY be paginated (see [[[#pagination]]])
 
 #### (HTTP API) GET `/space/{space_id}/collections/`
 
@@ -1010,6 +1099,9 @@ Content-type: application/json
 ### List Collection operation
 
 * Returns the list of Collection resources
+* MAY be paginated (see [[[#pagination]]]); the example below shows a single
+  unpaginated page, and the paginated example that follows shows the `next` link
+  and cursor continuation.
 
 #### (HTTP API) GET `/space/{space_id}/{collection_id}/`
 
@@ -1044,6 +1136,78 @@ Content-type: application/json
       "id": "3943c87f-b617-44bc-ba75-8de2b16c3640",
       "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/3943c87f-b617-44bc-ba75-8de2b16c3640",
       "contentType": "application/json" 
+    }
+  ]
+}
+```
+
+##### Paginated example
+
+A client requests a bounded page with `limit` (here, two items from a Collection
+that holds more):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/?limit=2 HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+The response carries the page of items plus a `next` link, signalling that more
+items follow. `totalItems` is omitted here -- the server does not return a total
+for this (potentially large) Collection:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "id": "73WakrfVbNJBaAmhQtEeDv",
+  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
+  "name": "Example JSON Documents Collection",
+  "type": ["Collection"],
+  "items": [
+    {
+      "id": "321efd4e-23cb-497c-aaee-7bd26e66d39e",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/321efd4e-23cb-497c-aaee-7bd26e66d39e",
+      "contentType": "application/json"
+    },
+    {
+      "id": "3943c87f-b617-44bc-ba75-8de2b16c3640",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/3943c87f-b617-44bc-ba75-8de2b16c3640",
+      "contentType": "application/json"
+    }
+  ],
+  "next": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/?limit=2&cursor=eyJhZnRlciI6IjM5NDNjODdmLWI2MTctNDRiYy1iYTc1LThkZTJiMTZjMzY0MCJ9"
+}
+```
+
+The client follows `next` verbatim to fetch the subsequent page (the `cursor` is
+opaque and supplied by the server -- the client does not build it):
+
+```http
+GET /space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/?limit=2&cursor=eyJhZnRlciI6IjM5NDNjODdmLWI2MTctNDRiYy1iYTc1LThkZTJiMTZjMzY0MCJ9 HTTP/1.1
+Host: example.com
+Accept: application/json
+Authorization: ...
+```
+
+The final page omits `next`, marking the end of the list:
+
+```http
+HTTP/1.1 200 OK
+Content-type: application/json
+
+{
+  "id": "73WakrfVbNJBaAmhQtEeDv",
+  "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv",
+  "name": "Example JSON Documents Collection",
+  "type": ["Collection"],
+  "items": [
+    {
+      "id": "9c7b2e51-0d4a-4c2f-8b3e-1f6a5d8e7c90",
+      "url": "/space/81246131-69a4-45ab-9bff-9c946b59cf2e/73WakrfVbNJBaAmhQtEeDv/9c7b2e51-0d4a-4c2f-8b3e-1f6a5d8e7c90",
+      "contentType": "application/json"
     }
   ]
 }
@@ -1134,7 +1298,7 @@ Resource properties:
 
 ### Content Types and Representations
 
-A Resource has exactly **one current representation**: the stored bytes plus
+A Resource has exactly one current representation: the stored bytes plus
 the content type they are stored under. Every successful write (POST or PUT)
 replaces that representation entirely -- including replacing a representation
 previously stored under a different content type. Servers are not required to
@@ -1283,7 +1447,7 @@ Content-type: application/json
 
 Errors (see [[[#error-type-registry]]] for canonical examples):
 
-* [=not-found=] (404) -- the Resource does not exist, **or** the caller has
+* [=not-found=] (404) -- the Resource does not exist, or the caller has
   missing or insufficient authorization; per [[[#error-handling]]] a resource
   the caller is not authorized to read is indistinguishable from one that does
   not exist.
@@ -1371,7 +1535,7 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
   [[[#collection-level-reserved-endpoints]]] (for example, `query` or
   `linkset`).
 * [=not-found=] (404) -- the enclosing Space or Collection is missing or
-  invalid, **or** the caller has missing or insufficient authorization; per
+  invalid, or the caller has missing or insufficient authorization; per
   [[[#error-handling]]] an under-authorized request is indistinguishable from a
   missing target.
 * [=quota-exceeded=] (507) -- the Collection's backend has no storage quota
@@ -1530,7 +1694,7 @@ Content-type: application/json
 
 Errors (see [[[#error-type-registry]]] for canonical examples):
 
-* [=not-found=] (404) -- the Resource does not exist, **or** the caller has
+* [=not-found=] (404) -- the Resource does not exist, or the caller has
   missing or insufficient authorization; per [[[#error-handling]]] a Metadata
   object the caller is not authorized to read is indistinguishable from one
   that does not exist.
@@ -1588,7 +1752,7 @@ HTTP/1.1 204 No Content
 Errors (see [[[#error-type-registry]]] for canonical examples):
 
 * [=not-found=] (404) -- the Resource does not exist (this operation does not
-  create one), **or** the caller has missing or insufficient authorization,
+  create one), or the caller has missing or insufficient authorization,
   per [[[#error-handling]]].
 * [=invalid-request-body=] (400) -- the request body is not a JSON object, or
   the `custom` object (or a property within it) does not have the shape
@@ -2596,11 +2760,12 @@ status code depending on the operation.
 
 | `type` URI | Anchor | Typical status | Description |
 |------------|--------|----------------|-------------|
-| `https://wallet.storage/spec#not-found` | <dfn id="not-found">not-found</dfn> | 404 | The resource (Space, Collection, or Resource) does not exist, **or** the caller is not authorized to access it. These two conditions are deliberately indistinguishable -- see the privacy note below. |
+| `https://wallet.storage/spec#not-found` | <dfn id="not-found">not-found</dfn> | 404 | The resource (Space, Collection, or Resource) does not exist, or the caller is not authorized to access it. These two conditions are deliberately indistinguishable -- see the privacy note below. |
 | `https://wallet.storage/spec#invalid-id` | <dfn id="invalid-id">invalid-id</dfn> | 400 | A Space, Collection, or Resource `id` is missing or not URL-safe. |
 | `https://wallet.storage/spec#reserved-id` | <dfn id="reserved-id">reserved-id</dfn> | 409 | A client-supplied `id` collides with a [[[#reserved-path-segment-registry]]] segment. |
 | `https://wallet.storage/spec#id-conflict` | <dfn id="id-conflict">id-conflict</dfn> | 409 | A client-supplied `id` in a `POST` create operation already exists. (Create-or-replace by `id` is done idempotently via `PUT`, which does not conflict.) |
 | `https://wallet.storage/spec#invalid-request-body` | <dfn id="invalid-request-body">invalid-request-body</dfn> | 400 | The request body is missing or invalid (e.g. a required property is absent). Entries in `errors` SHOULD carry a `pointer` to the offending field. |
+| `https://wallet.storage/spec#invalid-cursor` | <dfn id="invalid-cursor">invalid-cursor</dfn> | 400 | A pagination `cursor` query parameter is malformed or can no longer be honored (e.g. an expired snapshot). See [[[#pagination]]]. |
 | `https://wallet.storage/spec#missing-content-type` | <dfn id="missing-content-type">missing-content-type</dfn> | 400 | A required `Content-Type` header is missing. |
 | `https://wallet.storage/spec#missing-authorization` | <dfn id="missing-authorization">missing-authorization</dfn> | 401 | Required `Authorization` / `Capability-Invocation` headers (or proof of possession) are missing. |
 | `https://wallet.storage/spec#invalid-authorization-header` | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn> | 400 | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification. |
