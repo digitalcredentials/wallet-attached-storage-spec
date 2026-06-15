@@ -258,7 +258,11 @@ A state-changing request (`PUT` or `DELETE`) MAY carry a precondition:
 A server that supports conditional writes MUST evaluate the precondition
 atomically with the write (for example, under a per-Resource lock), so that
 two concurrent writers cannot both observe the same prior version and both
-succeed. A client recovers from a `412` by re-reading the current Resource,
+succeed. An in-process per-Resource lock satisfies this for a single-instance
+server only; a horizontally-scaled deployment needs to coordinate the
+check-and-write across instances (e.g. an atomic compare-and-swap on the stored
+version or a shared lock). The reference implementation provides single-instance
+locking only. A client recovers from a `412` by re-reading the current Resource,
 re-applying its change on top of the new version, and retrying.
 
 As with [=id-conflict=], a server MUST verify the caller's authorization
