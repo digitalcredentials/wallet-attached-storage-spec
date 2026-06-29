@@ -266,7 +266,7 @@ locking only. A client recovers from a `412` by re-reading the current Resource,
 re-applying its change on top of the new version, and retrying.
 
 As with [=id-conflict=], a server MUST verify the caller's authorization
-*before* evaluating a precondition, so a `412` is only ever observed by a caller
+before evaluating a precondition, so a `412` is only ever observed by a caller
 already authorized to write the target; an under-authorized caller receives the
 merged [=not-found=] (`404`) instead, per the maximum-privacy rule in
 [[[#error-handling]]].
@@ -939,6 +939,23 @@ Collection properties (user-writable):
   for the given space. If an unavailable (unsupported) backend is specified,
   the server MUST throw an error.
   See section [[[#backends]]] for more details.
+* `encryption` (optional) - A non-secret marker declaring that this collection's
+  Resources are client-side encrypted, and naming the scheme. An object with a
+  required string `scheme` property (e.g. `{ "scheme": "edv" }` for the
+  EDV-over-WAS scheme); absent means the collection is plaintext. The server
+  MUST NOT interpret the marker beyond validating its shape -- it never holds key
+  material and stores the marker opaquely. Its purpose is discovery: any
+  authorized reader (including a delegated consumer that did not create the
+  collection) learns from the Collection Description that the collection is
+  encrypted, and decrypts with its own keys. The marker is **set-once**: a server
+  MUST allow declaring it on a collection that lacks one (e.g. migrating a
+  pre-existing collection), but MUST reject (with an `encryption-immutable` error)
+  any attempt to change its `scheme` or clear it on an existing collection, since
+  that would corrupt the already-stored encrypted Resources. See section
+  [[[#backends]]] (client-side encryption note) for the rationale.
+  A server that recognizes the declared `scheme` enforces it structurally on
+  write -- rejecting any non-envelope body so plaintext can never be stored in
+  an encrypted Collection; see [[[#encryption-scheme-registry]]].
 
 Collection properties automatically added by the server:
 
@@ -1068,6 +1085,9 @@ Errors (see [[[#error-type-registry]]] for canonical examples):
 * [=reserved-id=] (409) -- the supplied Collection `id` collides with one of the
   [[[#space-level-reserved-endpoints]]] (for example, `collections` or
   `linkset`).
+* [=encryption-immutable=] (409) -- the update tried to change or clear an
+  existing `encryption` marker (the marker is set-once; see
+  [[[#collection-data-model]]]).
 
 ### Get Collection Description operation
 
@@ -2466,7 +2486,10 @@ Backend description properties:
   stores faithfully with no server cooperation, and whether a given Collection
   is encrypted varies _per Collection_ on the very same backend. Encryption is
   therefore a property of a Collection's data (signaled at the Collection level
-  and held in the client's keys), not a capability of the backend.
+  and held in the client's keys), not a capability of the backend. Concretely,
+  this signal is the Collection's optional `encryption` marker (see
+  [[[#collection-data-model]]]): a non-secret declaration any authorized reader
+  discovers from the Collection Description, while the keys stay in the client.
 
 <div class="ednote">
 The schema of a backend's connection configuration (server-internal
@@ -2739,9 +2762,105 @@ reserved segment list above, the server MUST return a 409 Conflict error.
 The following path segments represent reserved API endpoints for Resource
 level operations.
 
-| Reserved API Endpoint                                  | Reserved segment | Purpose                              |
-|--------------------------------------------------------|------------------|--------------------------------------|
+| Reserved API Endpoint                                  | Reserved segment | Purpose                                              |
+|--------------------------------------------------------|------------------|------------------------------------------------------|
 | `/space/{space_id}/{collection_id}/{resource_id}/meta` | `meta`           | Resource metadata (server-managed and user-writable) |
+
+</section>
+
+<section class="appendix">
+
+## Encryption Scheme Registry
+
+A Collection's optional `encryption` marker (see [[[#collection-data-model]]])
+names a client-side encryption `scheme`. This registry maps each `scheme` token
+to the wire format the server can expect for Resources in such a Collection, so
+that a [=server=] can hold the [=collection=]'s fail-closed guarantee
+*structurally* -- by validating the shape of what is written -- rather than
+relying on every client to encrypt correctly. The server never holds key
+material and never decrypts; it validates only the non-secret envelope
+structure, so this enforcement neither requires nor weakens confidentiality.
+
+| `scheme` | Media type              | Envelope profile                                                                                                                                                                                                                    | Reference                                                      |
+|----------|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `edv`    | `application/jose+json` | A JWE in JSON Serialization ([[RFC7516]] §7.2): a JSON object carrying at least a `ciphertext` member and either a `recipients` array (general serialization) or a top-level `encrypted_key`/`protected` (flattened serialization). | [Encrypted Data Vaults](https://identity.foundation/edv-spec/) |
+
+### Server-side write validation
+
+A [=server=] that recognizes the `scheme` declared by a Collection's
+`encryption` marker MUST validate the body of every Resource content write
+([=POST=] or [=PUT=]) into that Collection against the scheme's envelope
+profile, and MUST reject a non-conforming body -- or a body sent under a
+`Content-Type` other than the scheme's registered media type -- with an
+[=encryption-scheme-mismatch=] error.
+
+This is the structural fail-closed guarantee: a client that has not encrypted
+the body, whether through a bug or an omission, cannot store server-visible
+plaintext in an encrypted Collection. The check is purely structural; a server
+MUST NOT attempt decryption and MUST NOT inspect the envelope's contents.
+
+The rule applies only to a **Resource's stored representation**. It does not
+apply to server-managed API documents -- Collection Descriptions, Resource
+Metadata, [=policy=] documents, linksets -- which remain `application/json`
+regardless of the Collection's encryption status.
+
+As with [=id-conflict=], a server MUST verify the caller's authorization
+before validating the envelope, so that [=encryption-scheme-mismatch=] is
+observable only to callers already authorized to write at that target; an
+under-authorized caller receives the merged [=not-found=] instead, and learns
+nothing about the Collection.
+
+### Accepting a marker only when it can be enforced
+
+When a Collection create or update declares an `encryption` marker (see
+[[[#update-or-create-by-id-collection-operation]]]), a server SHOULD reject a
+`scheme` it does not recognize -- one absent from its supported subset of this
+registry -- with an [=unsupported-encryption-scheme=] error, rather than storing
+a marker it cannot enforce. This ensures that every marker a server accepts is
+one it validates on write: "this Collection is marked encrypted" then
+structurally implies "plaintext writes to it are rejected here," closing the gap
+that a silently-unenforced marker would reopen.
+
+A server MAY instead choose to store markers for schemes it does not enforce
+(treating the marker as fully opaque, per [[[#collection-data-model]]]), but
+such a server MUST document that it provides no server-side fail-closed
+guarantee for those Collections, leaving the guarantee entirely to clients.
+
+### Validation profile (non-normative)
+
+A server MAY implement the `edv` envelope profile with a JSON Schema equivalent
+to the following sketch. Only the structural members are checked; their values
+are opaque ciphertext and are not interpreted.
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["ciphertext"],
+  "properties": {
+    "protected": { "type": "string" },
+    "iv": { "type": "string" },
+    "ciphertext": { "type": "string" },
+    "tag": { "type": "string" },
+    "encrypted_key": { "type": "string" },
+    "recipients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "header": { "type": "object" },
+          "encrypted_key": { "type": "string" }
+        }
+      }
+    }
+  },
+  "anyOf": [
+    { "required": ["recipients"] },
+    { "required": ["encrypted_key"] },
+    { "required": ["protected"] }
+  ]
+}
+```
 
 </section>
 
@@ -2762,26 +2881,29 @@ Each `type` URI is a fragment anchor into this registry. The status codes
 listed below are typical; a single kind MAY be returned with more than one
 status code depending on the operation.
 
-| `type` URI | Anchor | Typical status | Description |
-|------------|--------|----------------|-------------|
-| `https://wallet.storage/spec#not-found` | <dfn id="not-found">not-found</dfn> | 404 | The resource (Space, Collection, or Resource) does not exist, or the caller is not authorized to access it. These two conditions are deliberately indistinguishable -- see the privacy note below. |
-| `https://wallet.storage/spec#invalid-id` | <dfn id="invalid-id">invalid-id</dfn> | 400 | A Space, Collection, or Resource `id` is missing or not URL-safe. |
-| `https://wallet.storage/spec#reserved-id` | <dfn id="reserved-id">reserved-id</dfn> | 409 | A client-supplied `id` collides with a [[[#reserved-path-segment-registry]]] segment. |
-| `https://wallet.storage/spec#id-conflict` | <dfn id="id-conflict">id-conflict</dfn> | 409 | A client-supplied `id` in a `POST` create operation already exists. (Create-or-replace by `id` is done idempotently via `PUT`, which does not conflict.) |
-| `https://wallet.storage/spec#invalid-request-body` | <dfn id="invalid-request-body">invalid-request-body</dfn> | 400 | The request body is missing or invalid (e.g. a required property is absent). Entries in `errors` SHOULD carry a `pointer` to the offending field. |
-| `https://wallet.storage/spec#invalid-cursor` | <dfn id="invalid-cursor">invalid-cursor</dfn> | 400 | A pagination `cursor` query parameter is malformed or can no longer be honored (e.g. an expired snapshot). See [[[#pagination]]]. |
-| `https://wallet.storage/spec#missing-content-type` | <dfn id="missing-content-type">missing-content-type</dfn> | 400 | A required `Content-Type` header is missing. |
-| `https://wallet.storage/spec#missing-authorization` | <dfn id="missing-authorization">missing-authorization</dfn> | 401 | Required `Authorization` / `Capability-Invocation` headers (or proof of possession) are missing. |
-| `https://wallet.storage/spec#invalid-authorization-header` | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn> | 400 | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification. |
-| `https://wallet.storage/spec#controller-mismatch` | <dfn id="controller-mismatch">controller-mismatch</dfn> | 400 | The capability invocation in a Create Space request is not currently authorized by the `controller` supplied in the request body: it is neither signed by that DID nor accompanied by a valid, unexpired delegation chain rooted in it. Servers SHOULD differentiate the cause (chain rooted elsewhere, expired delegation, failed proof) in the `detail` string where they can; see [[[#create-space-errors]]]. |
-| `https://wallet.storage/spec#unsupported-backend` | <dfn id="unsupported-backend">unsupported-backend</dfn> | 409 | A requested `backend` id is not in the space's [[[#space-backends-available]]] list. |
-| `https://wallet.storage/spec#precondition-failed` | <dfn id="precondition-failed">precondition-failed</dfn> | 412 | A conditional write's `If-Match` / `If-None-Match` precondition evaluated false: the Resource's current version did not match, or a create-if-absent target already exists. Header-driven and distinct from the `409` conflict kinds. See [[[#conditional-requests]]]. |
-| `https://wallet.storage/spec#quota-exceeded` | <dfn id="quota-exceeded">quota-exceeded</dfn> | 507 | A write was rejected because the target backend's storage quota is exhausted. See [[[#quotas]]]. |
-| `https://wallet.storage/spec#payload-too-large` | <dfn id="payload-too-large">payload-too-large</dfn> | 413 | An upload exceeds the target backend's `maxUploadBytes` constraint (see [[[#quotas]]]). Note that unlike [=quota-exceeded=], this rejection is per-request: smaller uploads may still succeed. |
-| `https://wallet.storage/spec#unsupported-operation` | <dfn id="unsupported-operation">unsupported-operation</dfn> | 501 | An optional operation that this server or the target backend does not support (for example, a per-collection quota report on a backend without per-collection accounting). |
-| `https://wallet.storage/spec#invalid-import` | <dfn id="invalid-import">invalid-import</dfn> | 400 | An uploaded archive is not a valid WAS space export. |
-| `https://wallet.storage/spec#storage-error` | <dfn id="storage-error">storage-error</dfn> | 500 | An underlying storage operation failed. |
-| `https://wallet.storage/spec#internal-error` | <dfn id="internal-error">internal-error</dfn> | 500 | An unexpected server-side fault with no more specific kind. |
+| `type` URI                                                  | Anchor                                                                      | Typical status | Description                                                                                                                                                                                                                                                                                                                                                                                                      |
+|-------------------------------------------------------------|-----------------------------------------------------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `https://wallet.storage/spec#not-found`                     | <dfn id="not-found">not-found</dfn>                                         | 404            | The resource (Space, Collection, or Resource) does not exist, or the caller is not authorized to access it. These two conditions are deliberately indistinguishable -- see the privacy note below.                                                                                                                                                                                                               |
+| `https://wallet.storage/spec#invalid-id`                    | <dfn id="invalid-id">invalid-id</dfn>                                       | 400            | A Space, Collection, or Resource `id` is missing or not URL-safe.                                                                                                                                                                                                                                                                                                                                                |
+| `https://wallet.storage/spec#reserved-id`                   | <dfn id="reserved-id">reserved-id</dfn>                                     | 409            | A client-supplied `id` collides with a [[[#reserved-path-segment-registry]]] segment.                                                                                                                                                                                                                                                                                                                            |
+| `https://wallet.storage/spec#id-conflict`                   | <dfn id="id-conflict">id-conflict</dfn>                                     | 409            | A client-supplied `id` in a `POST` create operation already exists. (Create-or-replace by `id` is done idempotently via `PUT`, which does not conflict.)                                                                                                                                                                                                                                                         |
+| `https://wallet.storage/spec#invalid-request-body`          | <dfn id="invalid-request-body">invalid-request-body</dfn>                   | 400            | The request body is missing or invalid (e.g. a required property is absent). Entries in `errors` SHOULD carry a `pointer` to the offending field.                                                                                                                                                                                                                                                                |
+| `https://wallet.storage/spec#invalid-cursor`                | <dfn id="invalid-cursor">invalid-cursor</dfn>                               | 400            | A pagination `cursor` query parameter is malformed or can no longer be honored (e.g. an expired snapshot). See [[[#pagination]]].                                                                                                                                                                                                                                                                                |
+| `https://wallet.storage/spec#missing-content-type`          | <dfn id="missing-content-type">missing-content-type</dfn>                   | 400            | A required `Content-Type` header is missing.                                                                                                                                                                                                                                                                                                                                                                     |
+| `https://wallet.storage/spec#missing-authorization`         | <dfn id="missing-authorization">missing-authorization</dfn>                 | 401            | Required `Authorization` / `Capability-Invocation` headers (or proof of possession) are missing.                                                                                                                                                                                                                                                                                                                 |
+| `https://wallet.storage/spec#invalid-authorization-header`  | <dfn id="invalid-authorization-header">invalid-authorization-header</dfn>   | 400            | An `Authorization`, `Capability-Invocation`, or `Digest` header is malformed, unparseable, or failed verification.                                                                                                                                                                                                                                                                                               |
+| `https://wallet.storage/spec#controller-mismatch`           | <dfn id="controller-mismatch">controller-mismatch</dfn>                     | 400            | The capability invocation in a Create Space request is not currently authorized by the `controller` supplied in the request body: it is neither signed by that DID nor accompanied by a valid, unexpired delegation chain rooted in it. Servers SHOULD differentiate the cause (chain rooted elsewhere, expired delegation, failed proof) in the `detail` string where they can; see [[[#create-space-errors]]]. |
+| `https://wallet.storage/spec#unsupported-backend`           | <dfn id="unsupported-backend">unsupported-backend</dfn>                     | 409            | A requested `backend` id is not in the space's [[[#space-backends-available]]] list.                                                                                                                                                                                                                                                                                                                             |
+| `https://wallet.storage/spec#encryption-immutable`          | <dfn id="encryption-immutable">encryption-immutable</dfn>                   | 409            | A Collection update tried to change or clear an existing `encryption` marker. The marker is set-once: declaring it on a Collection that lacks one is allowed, but changing its `scheme` (or clearing it) on a populated Collection would corrupt the stored, client-encrypted Resources. See [[[#collection-data-model]]].                                                                                       |
+| `https://wallet.storage/spec#encryption-scheme-mismatch`    | <dfn id="encryption-scheme-mismatch">encryption-scheme-mismatch</dfn>       | 422            | A Resource write into an encrypted Collection had a body (or `Content-Type`) that does not conform to the Collection's declared `encryption` scheme envelope profile. Reachable only by a caller already authorized to write -- see [[[#encryption-scheme-registry]]].                                                                                                                                           |
+| `https://wallet.storage/spec#unsupported-encryption-scheme` | <dfn id="unsupported-encryption-scheme">unsupported-encryption-scheme</dfn> | 400            | A Collection create/update declared an `encryption` `scheme` the server does not recognize or support. See [[[#encryption-scheme-registry]]].                                                                                                                                                                                                                                                                    |
+| `https://wallet.storage/spec#precondition-failed`           | <dfn id="precondition-failed">precondition-failed</dfn>                     | 412            | A conditional write's `If-Match` / `If-None-Match` precondition evaluated false: the Resource's current version did not match, or a create-if-absent target already exists. Header-driven and distinct from the `409` conflict kinds. See [[[#conditional-requests]]].                                                                                                                                           |
+| `https://wallet.storage/spec#quota-exceeded`                | <dfn id="quota-exceeded">quota-exceeded</dfn>                               | 507            | A write was rejected because the target backend's storage quota is exhausted. See [[[#quotas]]].                                                                                                                                                                                                                                                                                                                 |
+| `https://wallet.storage/spec#payload-too-large`             | <dfn id="payload-too-large">payload-too-large</dfn>                         | 413            | An upload exceeds the target backend's `maxUploadBytes` constraint (see [[[#quotas]]]). Note that unlike [=quota-exceeded=], this rejection is per-request: smaller uploads may still succeed.                                                                                                                                                                                                                   |
+| `https://wallet.storage/spec#unsupported-operation`         | <dfn id="unsupported-operation">unsupported-operation</dfn>                 | 501            | An optional operation that this server or the target backend does not support (for example, a per-collection quota report on a backend without per-collection accounting).                                                                                                                                                                                                                                       |
+| `https://wallet.storage/spec#invalid-import`                | <dfn id="invalid-import">invalid-import</dfn>                               | 400            | An uploaded archive is not a valid WAS space export.                                                                                                                                                                                                                                                                                                                                                             |
+| `https://wallet.storage/spec#storage-error`                 | <dfn id="storage-error">storage-error</dfn>                                 | 500            | An underlying storage operation failed.                                                                                                                                                                                                                                                                                                                                                                          |
+| `https://wallet.storage/spec#internal-error`                | <dfn id="internal-error">internal-error</dfn>                               | 500            | An unexpected server-side fault with no more specific kind.                                                                                                                                                                                                                                                                                                                                                      |
 
 **Privacy: the `not-found` kind is intentionally merged.** Under the principle
 of maximum privacy (see [[[#error-handling]]]), an unauthorized client MUST NOT
@@ -2798,7 +2920,7 @@ target and so MAY use their own precise `type`s -- see [[[#error-handling]]].
 
 **Privacy: `id-conflict` is existence-revealing by nature** -- a `409` confirms
 that the supplied id is taken. For Create Collection and Create Resource,
-servers MUST therefore verify the caller's authorization *before* checking for
+servers MUST therefore verify the caller's authorization before checking for
 a conflict, so that only callers already authorized to create at that level can
 observe the signal; an under-authorized caller receives the merged
 [=not-found=] instead. For Create Space, where any caller permitted to attempt
@@ -2967,6 +3089,19 @@ Content-type: application/problem+json
 {
   "type": "https://wallet.storage/spec#unsupported-backend",
   "title": "Unsupported backend id, check the space's 'backends available' list."
+}
+```
+
+[=encryption-immutable=] -- a Collection update tried to change or clear an
+existing `encryption` marker (it is set-once; see [[[#collection-data-model]]]):
+
+```http
+HTTP/1.1 409 Conflict
+Content-type: application/problem+json
+
+{
+  "type": "https://wallet.storage/spec#encryption-immutable",
+  "title": "Collection encryption marker is immutable."
 }
 ```
 
