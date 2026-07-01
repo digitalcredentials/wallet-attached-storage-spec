@@ -1237,6 +1237,13 @@ Content-type: application/json
 }
 ```
 
+On a Collection that declares an `encryption` marker (see
+[[[#encryption-scheme-registry]]]), each item's user-writable metadata is stored
+encrypted (see [[[#resource-metadata-data-model]]]). Item summaries for an
+encrypted Collection therefore carry only server-visible fields (`id`, `url`,
+`contentType`) and omit `name`; a client that needs names decrypts each
+Resource's Metadata itself.
+
 ### Delete Collection operation
 
 #### (HTTP API) DELETE `/space/{space_id}/{collection_id}`
@@ -1672,9 +1679,21 @@ User-writable properties:
     richer structured metadata SHOULD store it as a Resource in its own
     right rather than in `tags`.
 
+On a Collection that declares an `encryption` marker (see
+[[[#encryption-scheme-registry]]]), the user-writable `custom` object is stored
+**encrypted**: its value is an envelope of the Collection's declared scheme
+(the same envelope profile used for a Resource's content). The server-managed
+top-level properties (`contentType`, `size`, timestamps) remain plaintext -- the
+server needs them for listings, `GET`/`HEAD` headers, and quotas. The server
+validates the `custom` envelope structurally on write (rejecting a plaintext
+`custom` with an [=encryption-scheme-mismatch=]) and never decrypts it; a client
+holding the keys decrypts `custom` back to `{ name, tags, ... }` after reading.
+Because the server cannot read an encrypted `name`, [[[#list-collection-operation]]]
+summaries for an encrypted Collection carry no `name` (see there).
+
 A Resource's Metadata object is created and deleted together with the
 Resource itself: it comes into existence (with only server-managed
-properties) when the Resource is created, and is removed when the Resource is
+properties) when the Resource is created and is removed when the Resource is
 deleted. There is no `DELETE /meta` operation; to clear the user-writable
 properties, send a `PUT` with an empty `custom` object (`{ "custom": {} }`)
 or an empty body object (`{}`).
@@ -2781,9 +2800,9 @@ relying on every client to encrypt correctly. The server never holds key
 material and never decrypts; it validates only the non-secret envelope
 structure, so this enforcement neither requires nor weakens confidentiality.
 
-| `scheme` | Media type              | Envelope profile                                                                                                                                                                                                                    | Reference                                                      |
-|----------|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
-| `edv`    | `application/jose+json` | A JWE in JSON Serialization ([[RFC7516]] §7.2): a JSON object carrying at least a `ciphertext` member and either a `recipients` array (general serialization) or a top-level `encrypted_key`/`protected` (flattened serialization). | [Encrypted Data Vaults](https://identity.foundation/edv-spec/) |
+| `scheme` | Media type         | Envelope profile                                                                                                                                                                                                                                                                                                                          | Reference                                                      |
+|----------|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
+| `edv`    | `application/json` | An [Encrypted Data Vault](https://identity.foundation/edv-spec/) **Encrypted Document**: a JSON object whose `jwe` member is a JWE in JSON Serialization ([[RFC7516]] §7.2) -- a JSON object carrying at least a `ciphertext` member and either a `recipients` array (general serialization) or a top-level `encrypted_key`/`protected` (flattened serialization). The document MAY also carry EDV bookkeeping members (`id`, `sequence`, `indexed`); these are opaque to the server. | [Encrypted Data Vaults](https://identity.foundation/edv-spec/) |
 
 ### Server-side write validation
 
@@ -2799,10 +2818,17 @@ the body, whether through a bug or an omission, cannot store server-visible
 plaintext in an encrypted Collection. The check is purely structural; a server
 MUST NOT attempt decryption and MUST NOT inspect the envelope's contents.
 
-The rule applies only to a **Resource's stored representation**. It does not
-apply to server-managed API documents -- Collection Descriptions, Resource
-Metadata, [=policy=] documents, linksets -- which remain `application/json`
-regardless of the Collection's encryption status.
+The rule applies to a **Resource's stored representation** and, on an encrypted
+Collection, to the user-writable `custom` object of its
+[[[#resource-metadata-data-model]]] (see the encrypted-Collection note there).
+It does not apply to the rest of the server-managed API documents -- Collection
+Descriptions, the server-managed top-level Metadata properties, [=policy=]
+documents, linksets -- which remain `application/json` regardless of the
+Collection's encryption status. For the Metadata object specifically, the
+document itself stays a plaintext `application/json` object (so the server keeps
+its top-level `contentType`, `size`, and timestamps); only the `custom`
+sub-value MUST be a conforming envelope on an encrypted Collection, validated the
+same fail-closed way (an [=encryption-scheme-mismatch=] on non-conformance).
 
 As with [=id-conflict=], a server MUST verify the caller's authorization
 before validating the envelope, so that [=encryption-scheme-mismatch=] is
@@ -2829,36 +2855,45 @@ guarantee for those Collections, leaving the guarantee entirely to clients.
 ### Validation profile (non-normative)
 
 A server MAY implement the `edv` envelope profile with a JSON Schema equivalent
-to the following sketch. Only the structural members are checked; their values
-are opaque ciphertext and are not interpreted.
+to the following sketch. The outer object MUST carry a `jwe` member; only the
+`jwe`'s structural members are checked; their values are opaque ciphertext and
+are not interpreted. A plaintext object under `application/json` (one with no
+valid `jwe`) fails this profile and is rejected with an
+[=encryption-scheme-mismatch=], preserving the fail-closed guarantee.
 
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["ciphertext"],
+  "required": ["jwe"],
   "properties": {
-    "protected": { "type": "string" },
-    "iv": { "type": "string" },
-    "ciphertext": { "type": "string" },
-    "tag": { "type": "string" },
-    "encrypted_key": { "type": "string" },
-    "recipients": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "header": { "type": "object" },
-          "encrypted_key": { "type": "string" }
+    "jwe": {
+      "type": "object",
+      "required": ["ciphertext"],
+      "properties": {
+        "protected": { "type": "string" },
+        "iv": { "type": "string" },
+        "ciphertext": { "type": "string" },
+        "tag": { "type": "string" },
+        "encrypted_key": { "type": "string" },
+        "recipients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "header": { "type": "object" },
+              "encrypted_key": { "type": "string" }
+            }
+          }
         }
-      }
+      },
+      "anyOf": [
+        { "required": ["recipients"] },
+        { "required": ["encrypted_key"] },
+        { "required": ["protected"] }
+      ]
     }
-  },
-  "anyOf": [
-    { "required": ["recipients"] },
-    { "required": ["encrypted_key"] },
-    { "required": ["protected"] }
-  ]
+  }
 }
 ```
 
